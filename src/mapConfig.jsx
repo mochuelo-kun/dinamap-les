@@ -34,7 +34,7 @@ const layerConfigs = [
         layerOrder: 2,
         layerVisibilityDefault: true,
         metadata: {
-            url: 'https://dinamap-les.s3.ap-southeast-1.amazonaws.com/geotiff/Segara-Lestari-Drone-Scan-higher-altitude-2025-07-16-orthophoto.raw.cog.tif',
+            url: 'https://dinamap-les.s3.amazonaws.com/geotiff/Segara-Lestari-Drone-Scan-higher-altitude-2025-07-16-orthophoto.raw.cog.tif',
             contributedOn: '2025-07-16',
             contributedBy: 'Ben / Andy',
         }
@@ -46,7 +46,7 @@ const layerConfigs = [
         layerOrder: 3,
         layerVisibilityDefault: true,
         metadata: {
-            url: 'https://dinamap-les.s3.ap-southeast-1.amazonaws.com/geotiff/Segara-Lestari-Drone-Scan-lower-altitude-2025-07-16-orthophoto.raw.cog.tif',
+            url: 'https://dinamap-les.s3.amazonaws.com/geotiff/Segara-Lestari-Drone-Scan-lower-altitude-2025-07-16-orthophoto.raw.cog.tif',
             contributedOn: '2025-07-16',
             contributedBy: 'Ben / Andy',
         }
@@ -58,7 +58,7 @@ const layerConfigs = [
         layerOrder: 4,
         layerVisibilityDefault: true,
         metadata: {
-            url: 'https://dinamap-les.s3.ap-southeast-1.amazonaws.com/geotiff/2025-07-dinacon-drone-sea-1.cog.tif',
+            url: 'https://dinamap-les.s3.amazonaws.com/geotiff/2025-07-dinacon-drone-sea-1.cog.tif',
             contributedOn: '2025-07-09',
             contributedBy: 'Logan',
         }
@@ -70,7 +70,7 @@ const layerConfigs = [
         layerOrder: 5,
         layerVisibilityDefault: true,
         metadata: {
-            url: 'https://dinamap-les.s3.ap-southeast-1.amazonaws.com/geotiff/2025-07-dinacon-drone-sea-2.cog.tif',
+            url: 'https://dinamap-les.s3.amazonaws.com/geotiff/2025-07-dinacon-drone-sea-2.cog.tif',
             contributedOn: '2025-07-09',
             contributedBy: 'Logan',
         }
@@ -82,7 +82,7 @@ const layerConfigs = [
         layerOrder: 6,
         layerVisibilityDefault: true,
         metadata: {
-            url: 'https://dinamap-les.s3.ap-southeast-1.amazonaws.com/geotiff/2025-07-dinacon-alison-coral-tables.cog.tif',
+            url: 'https://dinamap-les.s3.amazonaws.com/geotiff/2025-07-dinacon-alison-coral-tables.cog.tif',
             contributedOn: '2025-07-09',
             contributedBy: 'Alison',
         }

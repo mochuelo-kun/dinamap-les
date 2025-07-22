@@ -3,28 +3,24 @@ import MapComponent from './Map';
 import LayerToggle from './LayerToggle';
 import './App.css';
 import {
-  getdefaultLayerVisibilitys,
   getSortedLayerConfigs,
   SEGARA_LESTARI_HOME_LONLAT_COORDS,
   SEGARA_LESTARI_HOME_ZOOM,
 } from './mapConfig';
 
 function App() {
-  const layerConfigs = getSortedLayerConfigs();
-  const [layerVisibility, setLayerVisibility] = useState(getdefaultLayerVisibilitys());
+  const [layers, setLayers] = useState(getSortedLayerConfigs());
 
   return (
     <div className="App">
       <MapComponent
         homeLatLng={SEGARA_LESTARI_HOME_LONLAT_COORDS}
         homeZoom={SEGARA_LESTARI_HOME_ZOOM}
-        layerConfigs={layerConfigs}
-        layerVisibility={layerVisibility}
+        layers={layers}
       />
       <LayerToggle
-        layerConfigs={layerConfigs}
-        layerVisibility={layerVisibility}
-        setLayerVisibility={setLayerVisibility}
+        layers={layers}
+        setLayers={setLayers}
       />
     </div>
   );

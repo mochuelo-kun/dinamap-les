@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import './LayerToggle.css';
 
-const LayerToggle = ({ layerConfigs, layerVisibility, setLayerVisibility }) => {
+const LayerToggle = ({ layers, setLayers }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleToggle = (layerId) => {
-    setLayerVisibility((prev) => ({
-      ...prev,
-      [layerId]: !prev[layerId],
-    }));
+  const handleVisibilityToggle = (targetLayerIndex) => {
+    setLayers(layers.map((layer, i) => 
+        i === targetLayerIndex
+          ? { ...layer, ["visible"]: !layer["visible"] }
+          : layer
+    ));
   };
 
   return (
@@ -20,15 +21,15 @@ const LayerToggle = ({ layerConfigs, layerVisibility, setLayerVisibility }) => {
       {isOpen && (
         <div className="layer-toggle-content">
           {
-            layerConfigs.map(({ id, label }) => {
+            layers.map(({ id, label, visible }, index) => {
               return (
                 <div
                   key={`layer-label-${id}`}
-                  onClick={() => handleToggle(id)}
+                  onClick={() => handleVisibilityToggle(index)}
                 >
                   <input
                     type="checkbox"
-                    checked={layerVisibility[id]}
+                    checked={visible}
                     readOnly
                   />
                   <label>{label}</label>

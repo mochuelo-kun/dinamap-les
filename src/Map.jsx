@@ -15,18 +15,17 @@ import {
   LAYER_TYPE_GEOTIFF,
 } from './mapConfig';
 
-const MapComponent = ({ homeLatLng, homeZoom, layerConfigs, layerVisibility }) => {
+const MapComponent = ({ homeLatLng, homeZoom, layers }) => {
   const mapRef = useRef();
   const [map, setMap] = useState(null);
 
   useEffect(() => {
-    const layers = layerConfigs.map(layerConfig => {
-      const { id, url, type, attributionText, attributionUrl, maxZoom } = layerConfig;
-      const visibility = layerVisibility[id];
+    const layerComponents = layers.map(layer => {
+      const { id, url, type, visible, attributionText, attributionUrl, maxZoom } = layer;
       if (type === LAYER_TYPE_OSM) {
         return new TileLayer({
           source: new OSM(),
-          visible: visibility,
+          visible: visible,
         });
       } else if (type === LAYER_TYPE_SATELLITE) {
         // const { tileUrl, attributionUrl, attributionText, maxZoom } = layerConfig.metadata;
@@ -38,12 +37,12 @@ const MapComponent = ({ homeLatLng, homeZoom, layerConfigs, layerVisibility }) =
             maxZoom: maxZoom,
 
           }),
-          visible: visibility,
+          visible: visible,
         })
       } else if (type === LAYER_TYPE_GEOTIFF) {
         // console.log(layerConfig);
         return new WebGLTileLayer({
-          visible: visibility,
+          visible: visible,
           source: new GeoTIFF({
             sources: [{ url: url }],
             attributions:
@@ -57,7 +56,7 @@ const MapComponent = ({ homeLatLng, homeZoom, layerConfigs, layerVisibility }) =
 
     const olMap = new Map({
       target: mapRef.current,
-      layers: layers,
+      layers: layerComponents,
       view: new View({
         center: fromLonLat(homeLatLng),
         zoom: homeZoom,
@@ -82,10 +81,10 @@ const MapComponent = ({ homeLatLng, homeZoom, layerConfigs, layerVisibility }) =
 
   useEffect(() => {
     if (!map) return;
-    layerConfigs.forEach(({ id }, i) => {
-      map.getLayers().getArray()[i].setVisible(layerVisibility[id]);
+    layers.forEach(({ id, visible }, i) => {
+      map.getLayers().getArray()[i].setVisible(visible);
     });
-  }, [layerVisibility, map]);
+  }, [layers, map]);
 
 
   return <div style={{ height: '100vh', width: '100%' }} ref={mapRef}></div>;

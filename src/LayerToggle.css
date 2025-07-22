@@ -6,4 +6,24 @@
   padding: 10px;
   z-index: 1;
   color: black;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  min-width: 200px;
 }
+
+.layer-toggle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.caret {
+  transition: transform 0.3s ease;
+}
+
+.caret.open {
+  transform: rotate(180deg);
+}
+

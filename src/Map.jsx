@@ -21,38 +21,37 @@ const MapComponent = ({ homeLatLng, homeZoom, layerConfigs, layerVisibility }) =
 
   useEffect(() => {
     const layers = layerConfigs.map(layerConfig => {
-      const visibility = layerVisibility[layerConfig.id];
-      if (layerConfig.type === LAYER_TYPE_OSM) {
+      const { id, url, type, attributionText, attributionUrl, maxZoom } = layerConfig;
+      const visibility = layerVisibility[id];
+      if (type === LAYER_TYPE_OSM) {
         return new TileLayer({
           source: new OSM(),
           visible: visibility,
         });
-      } else if (layerConfig.type === LAYER_TYPE_SATELLITE) {
-        const { tileUrl, attributionUrl, attributionName, maxZoom } = layerConfig.metadata;
+      } else if (type === LAYER_TYPE_SATELLITE) {
+        // const { tileUrl, attributionUrl, attributionText, maxZoom } = layerConfig.metadata;
         return new TileLayer({
           source: new XYZ({
-            url: tileUrl,
+            url: url,
             attributions:
-              `Tiles © <a href=${attributionUrl}>${attributionName}</a>`,
+              `Tiles © <a href=${attributionUrl}>${attributionText}</a>`,
             maxZoom: maxZoom,
 
           }),
           visible: visibility,
         })
-      } else if (layerConfig.type === LAYER_TYPE_GEOTIFF) {
-        console.log(layerConfig);
+      } else if (type === LAYER_TYPE_GEOTIFF) {
+        // console.log(layerConfig);
         return new WebGLTileLayer({
           visible: visibility,
           source: new GeoTIFF({
-            sources: [
-              {
-                url: layerConfig.metadata.url,
-              },
-            ],
+            sources: [{ url: url }],
+            attributions:
+              `Tiles © <a href=${attributionUrl}>${attributionText}</a>`,
           })
         })
       } else {
-        throw `Unknown layer config type: ${layerConfig.type} (id: ${layerConfig.id})`;
+        throw `Unknown layer config type: ${type} (id: ${id})`;
       }
     });
 
@@ -83,8 +82,8 @@ const MapComponent = ({ homeLatLng, homeZoom, layerConfigs, layerVisibility }) =
 
   useEffect(() => {
     if (!map) return;
-    layerConfigs.forEach(({ id, layerOrder }) => {
-      map.getLayers().getArray()[layerOrder].setVisible(layerVisibility[id]);
+    layerConfigs.forEach(({ id }, i) => {
+      map.getLayers().getArray()[i].setVisible(layerVisibility[id]);
     });
   }, [layerVisibility, map]);
 

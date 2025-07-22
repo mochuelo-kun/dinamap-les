@@ -3,7 +3,7 @@ import MapComponent from './Map';
 import LayerToggle from './LayerToggle';
 import './App.css';
 import {
-  getLayerVisibilityDefaults,
+  getdefaultLayerVisibilitys,
   getSortedLayerConfigs,
   SEGARA_LESTARI_HOME_LONLAT_COORDS,
   SEGARA_LESTARI_HOME_ZOOM,
@@ -11,7 +11,7 @@ import {
 
 function App() {
   const layerConfigs = getSortedLayerConfigs();
-  const [layerVisibility, setLayerVisibility] = useState(getLayerVisibilityDefaults());
+  const [layerVisibility, setLayerVisibility] = useState(getdefaultLayerVisibilitys());
 
   return (
     <div className="App">

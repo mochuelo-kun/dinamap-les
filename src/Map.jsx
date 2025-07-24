@@ -28,7 +28,6 @@ const MapComponent = ({ homeLatLng, homeZoom, layers }) => {
           visible: visible,
         });
       } else if (type === LAYER_TYPE_SATELLITE) {
-        // const { tileUrl, attributionUrl, attributionText, maxZoom } = layerConfig.metadata;
         return new TileLayer({
           source: new XYZ({
             url: url,
@@ -40,7 +39,6 @@ const MapComponent = ({ homeLatLng, homeZoom, layers }) => {
           visible: visible,
         })
       } else if (type === LAYER_TYPE_GEOTIFF) {
-        // console.log(layerConfig);
         return new WebGLTileLayer({
           visible: visible,
           source: new GeoTIFF({

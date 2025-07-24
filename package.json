@@ -17,6 +17,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.850.0",
     "geotiff": "^2.1.4-beta.0",
     "ol": "^10.6.1",
     "react": "^19.1.0",

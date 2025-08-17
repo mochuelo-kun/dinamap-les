@@ -4,8 +4,9 @@
   left: 3em;
   width: 10em;
   z-index: 5;
-  display: flex;
-  gap: 5px;
+  min-width: 0;
+  display: inline;
+  width: 30%;
 }
 
 .search-container input[type="text"] {
@@ -15,6 +16,9 @@
   font-size: 14px;
   color: #666666;
   background-color: white;
+  min-width: 0;
+  display: inline;
+  width: 100%;
 }
 
 .search-container button {

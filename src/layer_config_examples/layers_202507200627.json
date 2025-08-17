@@ -1,0 +1,69 @@
+{
+    "name": "Dinacon 2025 Maps",
+    "description": "Geotiff composite maps (coral and nearby land) created during Dinacon 2025 (July 2025)",
+    "createdAt": "2025-07-20T06:27:50.857Z",
+    "updatedAt": "'2025-07-23T06:27:50.857Z'",
+    "layers": [
+        {
+            "id": "osm",
+            "type": "osm",
+            "label": "OpenStreetMap",
+            "visible": true
+        },
+        {
+            "id": "satellite_worldimagery",
+            "type": "satellite",
+            "label": "Satellite",
+            "visible": false,
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "attributionUrl": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+            "attributionText": "ArcGIS - World Imagery",
+            "maxZoom": 18
+        },
+        {
+            "id": "geotiff_drone_land_high_20250716",
+            "type": "geotiff",
+            "label": "Dinacon 2025 - Ben/Andy - Drone Scan Land (higher)",
+            "visible": true,
+            "url": "https://dinamap-les.s3.amazonaws.com/geotiff/Segara-Lestari-Drone-Scan-higher-altitude-2025-07-16-orthophoto.raw.cog.tif",
+            "attributionText": "Dinacon 2025-07-16",
+            "date": "2025-07-16"
+        },
+        {
+            "id": "geotiff_drone_land_low_20250716",
+            "type": "geotiff",
+            "label": "Dinacon 2025 - Ben/Andy - Drone Scan Land (lower)",
+            "visible": true,
+            "url": "https://dinamap-les.s3.amazonaws.com/geotiff/Segara-Lestari-Drone-Scan-lower-altitude-2025-07-16-orthophoto.raw.cog.tif",
+            "attributionText": "Dinacon 2025-07-16",
+            "date": "2025-07-16"
+        },
+        {
+            "id": "geotiff_drone_sea_rough_20250709",
+            "type": "geotiff",
+            "label": "Dinacon 2025 - Logan - Rough Drone Sea Scan 1",
+            "visible": true,
+            "url": "https://dinamap-les.s3.amazonaws.com/geotiff/2025-07-dinacon-drone-sea-1.cog.tif",
+            "attributionText": "Dinacon 2025-07-09",
+            "date": "2025-07-09"
+        },
+        {
+            "id": "geotiff_drone_sea_tighter_20250709",
+            "type": "geotiff",
+            "label": "Dinacon 2025 - Logan - Rough Drone Sea Scan 2",
+            "visible": true,
+            "url": "https://dinamap-les.s3.amazonaws.com/geotiff/2025-07-dinacon-drone-sea-2.cog.tif",
+            "attributionText": "Dinacon 2025-07-09",
+            "date": "2025-07-09"
+        },
+        {
+            "id": "geotiff_aom_coral_map_20250709",
+            "type": "geotiff",
+            "label": "Dinacon 2025 - Alison - Coral Tables Segara Lestari",
+            "visible": true,
+            "url": "https://dinamap-les.s3.amazonaws.com/geotiff/2025-07-dinacon-alison-coral-tables.cog.tif",
+            "attributionText": "Dinacon 2025-07-09 - AOM",
+            "date": "2025-07-09"
+        }
+    ]
+}

@@ -31,7 +31,7 @@ const COORDINATE_MARKER_STYLE = new Style({
   }),
 });
 
-const MapComponent = ({ homeLatLng, homeZoom, layers, onCoordinateClick, coordinates }) => {
+const MapComponent = ({ homeLatLng, homeZoom, layers, onCoordinateClick, clickCoordinates, searchCoordinates }) => {
   const mapRef = useRef();
   const [map, setMap] = useState(null);
   const [coordinateMarkerLayer, setCoordinateMarkerLayer] = useState(null);
@@ -118,18 +118,40 @@ const MapComponent = ({ homeLatLng, homeZoom, layers, onCoordinateClick, coordin
   }, [layers, map]);
 
   useEffect(() => {
-    if (coordinateMarkerLayer) {
-      if (coordinates) {
-        coordinateMarkerLayer.getSource().clear();
-        const coordinateMarker = new Feature({
-          geometry: new Point(fromLonLat([coordinates.lng, coordinates.lat])),
-        });
-        coordinateMarkerLayer.getSource().addFeature(coordinateMarker);
-      } else {
-        coordinateMarkerLayer.getSource().clear();
-      }
+    if (!map || !coordinateMarkerLayer) return;
+
+    const source = coordinateMarkerLayer.getSource();
+    source.clear();
+
+    if (clickCoordinates) {
+      const marker = new Feature({
+        geometry: new Point(fromLonLat([clickCoordinates.lng, clickCoordinates.lat])),
+      });
+      source.addFeature(marker);
     }
-  }, [coordinates, coordinateMarkerLayer]);
+  }, [clickCoordinates, map, coordinateMarkerLayer]);
+
+  useEffect(() => {
+    if (!map) return;
+    
+    if (searchCoordinates) {
+      const duration = 8000;
+      map.getView().animate(
+        {
+          zoom: 7,
+          duration: duration / 4,
+        },
+        {
+          center: fromLonLat([searchCoordinates.lng, searchCoordinates.lat]),
+          duration: duration / 2,
+        },
+        {
+          zoom: 13,
+          duration: duration / 4,
+        },
+      );
+    }
+  }, [searchCoordinates, map]);
 
   return <div style={{ height: '100vh', width: '100%' }} ref={mapRef}></div>;
 };

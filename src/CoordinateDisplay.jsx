@@ -1,12 +1,12 @@
 import React from 'react';
 import './CoordinateDisplay.css';
 
-const CoordinateDisplay = ({ coordinates, onClear }) => {
-  if (!coordinates) {
+const CoordinateDisplay = ({ clickCoordinates, onClear }) => {
+  if (!clickCoordinates) {
     return null;
   }
 
-  const { lat, lng } = coordinates;
+  const { lat, lng } = clickCoordinates;
 
   return (
     <div className="coordinate-display">
@@ -18,7 +18,7 @@ const CoordinateDisplay = ({ coordinates, onClear }) => {
         <button 
           className="coordinate-close" 
           onClick={onClear}
-          aria-label="Clear coordinates"
+          aria-label="Clear click coordinates"
         >
           ×
         </button>

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { debounce } from 'lodash';
 import MapComponent from './Map';
 import LayerToggle from './LayerToggle';
 import CoordinateDisplay from './CoordinateDisplay';
@@ -56,10 +57,14 @@ function App() {
     setCoordinates(null);
   };
 
-  const handleSearch = async (query) => {
+  const debouncedAddressSearch = debounce(async (query) => {
+    const coords = await lookupAddress(query);
+    setSearchCoordinates(coords);
+  }, 4000, { leading: true });
+
+  const handleAddressSearch = async (query) => {
     if (query.trim()) {
-      const coords = await lookupAddress(query);
-      setSearchCoordinates(coords);
+      debouncedAddressSearch(query);
     }
   };
 
@@ -85,7 +90,7 @@ function App() {
         clickCoordinates={clickCoordinates}
         onClear={handleClearCoordinates}
       />
-      <SearchBar onSearch={handleSearch} />
+      <SearchBar onSearch={handleAddressSearch} />
     </div>
   );
 }

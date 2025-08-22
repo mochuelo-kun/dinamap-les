@@ -4,6 +4,8 @@ import MapComponent from './Map';
 import LayerToggle from './LayerToggle';
 import CoordinateDisplay from './CoordinateDisplay';
 import SearchBar from './SearchBar';
+import MarkerControls from './MarkerControls';
+import MarkerForm from './MarkerForm';
 import './App.css';
 import { getLatestLayerConfig } from './layerConfigService';
 import {
@@ -33,6 +35,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [clickCoordinates, setCoordinates] = useState(null); // For click on map
   const [searchCoordinates, setSearchCoordinates] = useState(null); // For search input
+  const [markers, setMarkers] = useState([]);
+  const [showMarkerForm, setShowMarkerForm] = useState(false);
+  const [editingMarker, setEditingMarker] = useState(null);
+  const [addMarkerMode, setAddMarkerMode] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -51,10 +57,41 @@ function App() {
 
   const handleCoordinateClick = (coords) => {
     setCoordinates(coords);
+    if (addMarkerMode) {
+      setShowMarkerForm(true);
+    }
   };
 
   const handleClearCoordinates = () => {
     setCoordinates(null);
+  };
+
+  const handleMarkerClick = (marker) => {
+    setEditingMarker(marker);
+    setShowMarkerForm(true);
+  };
+
+  const handleAddMarkerClick = () => {
+    setAddMarkerMode(true);
+    setCoordinates(null);
+  };
+
+  const handleMarkerSave = (markerData) => {
+    if (editingMarker) {
+      setMarkers(prev => prev.map(m => m.id === markerData.id ? markerData : m));
+    } else {
+      setMarkers(prev => [...prev, markerData]);
+    }
+  };
+
+  const handleMarkerDelete = (markerId) => {
+    setMarkers(prev => prev.filter(m => m.id !== markerId));
+  };
+
+  const handleMarkerFormClose = () => {
+    setShowMarkerForm(false);
+    setEditingMarker(null);
+    setAddMarkerMode(false);
   };
 
   const debouncedAddressSearch = debounce(async (query) => {
@@ -81,6 +118,9 @@ function App() {
         onCoordinateClick={handleCoordinateClick}
         clickCoordinates={clickCoordinates}
         searchCoordinates={searchCoordinates}
+        markers={markers}
+        onMarkerClick={handleMarkerClick}
+        addMarkerMode={addMarkerMode}
       />
       <LayerToggle
         layers={layers}
@@ -91,6 +131,19 @@ function App() {
         onClear={handleClearCoordinates}
       />
       <SearchBar onSearch={handleAddressSearch} />
+      <MarkerControls
+        markers={markers}
+        onMarkersChange={setMarkers}
+        onAddMarkerClick={handleAddMarkerClick}
+      />
+      <MarkerForm
+        isOpen={showMarkerForm}
+        onClose={handleMarkerFormClose}
+        onSave={handleMarkerSave}
+        onDelete={handleMarkerDelete}
+        editingMarker={editingMarker}
+        clickCoordinates={addMarkerMode ? clickCoordinates : null}
+      />
     </div>
   );
 }

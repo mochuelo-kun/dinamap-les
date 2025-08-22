@@ -1,0 +1,168 @@
+.marker-controls {
+  position: fixed;
+  top: 120px;
+  left: 10px;
+  z-index: 1000;
+}
+
+.marker-controls-toggle {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.marker-controls-toggle:hover {
+  background: white;
+}
+
+.marker-controls-panel {
+  position: absolute;
+  top: 45px;
+  left: 0;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 15px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  backdrop-filter: blur(10px);
+}
+
+.marker-controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.marker-controls-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1em;
+}
+
+.marker-count {
+  font-size: 0.9em;
+  color: #666;
+  background: #f8f9fa;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.marker-controls-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #545b62;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.file-input-label {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+}
+
+.file-input {
+  position: absolute;
+  left: -9999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.marker-summary {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.marker-type-counts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 0.85em;
+  color: #666;
+}
+
+.marker-type-counts div {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (max-width: 600px) {
+  .marker-controls {
+    top: 80px;
+  }
+  
+  .marker-controls-panel {
+    min-width: 260px;
+    left: -10px;
+  }
+  
+  .file-actions {
+    flex-direction: column;
+  }
+  
+  .marker-type-counts {
+    grid-template-columns: 1fr;
+  }
+}

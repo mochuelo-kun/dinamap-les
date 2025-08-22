@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import WebGLTileLayer from 'ol/layer/WebGLTile';
@@ -13,6 +13,7 @@ import Point from 'ol/geom/Point';
 import { Style, Text, Fill, Stroke } from 'ol/style';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { ScaleLine, defaults as defaultControls } from 'ol/control';
+import MarkerManager from './MarkerManager';
 import 'ol/ol.css';
 import './Map.css';
 import {
@@ -31,14 +32,24 @@ const COORDINATE_MARKER_STYLE = new Style({
   }),
 });
 
-const MapComponent = ({ homeLatLng, homeZoom, layers, onCoordinateClick, clickCoordinates, searchCoordinates }) => {
+const MapComponent = ({ 
+  homeLatLng, 
+  homeZoom, 
+  layers, 
+  onCoordinateClick, 
+  clickCoordinates, 
+  searchCoordinates,
+  markers,
+  onMarkerClick,
+  addMarkerMode
+}) => {
   const mapRef = useRef();
   const [map, setMap] = useState(null);
   const [coordinateMarkerLayer, setCoordinateMarkerLayer] = useState(null);
 
   useEffect(() => {
     const layerComponents = layers.map(layer => {
-      const { id, url, type, visible, attributionText, attributionUrl, maxZoom } = layer;
+      const { url, type, visible, attributionText, attributionUrl, maxZoom } = layer;
       if (type === LAYER_TYPE_OSM) {
         return new TileLayer({
           source: new OSM(),
@@ -65,7 +76,7 @@ const MapComponent = ({ homeLatLng, homeZoom, layers, onCoordinateClick, clickCo
           })
         })
       } else {
-        throw `Unknown layer config type: ${type} (id: ${id})`;
+        throw new Error(`Unknown layer config type: ${type}`);
       }
     });
 
@@ -95,24 +106,16 @@ const MapComponent = ({ homeLatLng, homeZoom, layers, onCoordinateClick, clickCo
       ]),
     });
 
-    olMap.on('singleclick', (event) => {
-      const coordinate = toLonLat(event.coordinate);
-      const [lng, lat] = coordinate;
-      
-      if (onCoordinateClick) {
-        onCoordinateClick({ lat, lng });
-      }
-    });
 
     setMap(olMap);
     setCoordinateMarkerLayer(coordinateMarkerLayerInstance);
 
     return () => olMap.setTarget(undefined);
-  }, []);
+  }, [homeLatLng, homeZoom, layers]);
 
   useEffect(() => {
     if (!map) return;
-    layers.forEach(({ id, visible }, i) => {
+    layers.forEach(({ visible }, i) => {
       map.getLayers().getArray()[i].setVisible(visible);
     });
   }, [layers, map]);
@@ -153,7 +156,54 @@ const MapComponent = ({ homeLatLng, homeZoom, layers, onCoordinateClick, clickCo
     }
   }, [searchCoordinates, map]);
 
-  return <div style={{ height: '100vh', width: '100%' }} ref={mapRef}></div>;
+  // Handle map clicks separately to avoid re-initialization
+  useEffect(() => {
+    if (!map) return;
+
+    const handleMapClick = (event) => {
+      // Check if clicking on an existing marker
+      const feature = map.forEachFeatureAtPixel(event.pixel, (feature) => {
+        return feature.get('markerId') ? feature : null;
+      });
+
+      if (feature && onMarkerClick && !addMarkerMode) {
+        onMarkerClick(feature.get('markerData'));
+        return;
+      }
+
+      // Handle coordinate click (for coordinate display or adding markers)
+      const coordinate = toLonLat(event.coordinate);
+      const [lng, lat] = coordinate;
+      
+      if (onCoordinateClick) {
+        onCoordinateClick({ lat, lng });
+      }
+    };
+
+    map.on('singleclick', handleMapClick);
+
+    return () => {
+      map.un('singleclick', handleMapClick);
+    };
+  }, [map, onCoordinateClick, onMarkerClick, addMarkerMode]);
+
+  return (
+    <>
+      <div 
+        style={{ 
+          height: '100vh', 
+          width: '100%',
+          cursor: addMarkerMode ? 'crosshair' : 'default'
+        }} 
+        ref={mapRef}
+      />
+      <MarkerManager
+        map={map}
+        markers={markers}
+        onMarkerClick={onMarkerClick}
+      />
+    </>
+  );
 };
 
 export default MapComponent;

@@ -32,6 +32,7 @@ const lookupAddress = async (address) => {
 };
 
 function App() {
+  const [baseLayersConfig, setBaseLayersConfig] = useState([]);
   const [layers, setLayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clickCoordinates, setCoordinates] = useState(null); // For click on map

@@ -1,13 +1,290 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dinacon - Coral Reef Map - Les</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dinacon - Coral Reef Map – Les Village</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #app { height: 100%; width: 100%; position: relative; }
+    #map { height: 100%; width: 100%; }
+
+    .panel { position: absolute; z-index: 1000; background: rgba(255,255,255,0.95); color: #222; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .panel h3 { margin: 0 0 8px 0; font-size: 14px; }
+
+    #layersPanel { top: .75rem; right: .75rem; padding: .75rem; min-width: 260px; }
+    #layers { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; font-size: 14px; }
+
+    #featuresPanel { left: .75rem; top: .75rem; padding: .75rem; display: grid; gap: 8px; min-width: 220px; }
+    #featuresPanel .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    #featuresPanel button, #featuresPanel label.btn { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    #featuresPanel button:disabled { opacity: .5; cursor: not-allowed; }
+    #featuresPanel input[type=file] { display: none; }
+
+    #searchPanel { position: absolute; top: .75rem; left: 50%; transform: translateX(-50%); padding: .5rem; width: min(90%, 420px); display: flex; gap: 4px; }
+    #searchInput { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #aaa; font-size: 14px; }
+    #searchBtn { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+
+    #coord { position: absolute; left: .75rem; bottom: .75rem; padding: 6px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: rgba(255,255,255,0.9); border-radius: 6px; border: 1px solid #ccc; z-index: 1000; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="map"></div>
+
+    <div id="layersPanel" class="panel">
+      <h3>Layers</h3>
+      <div id="layers"></div>
+    </div>
+
+    <div id="featuresPanel" class="panel">
+      <h3>Features</h3>
+      <div class="row">
+        <button id="saveGeojson" disabled>💾 Save GeoJSON</button>
+        <label class="btn" for="fileGeojson">📁 Load GeoJSON</label>
+        <input id="fileGeojson" type="file" accept=".geojson,.json" />
+        <button id="clearGeojson" disabled>🧹 Clear All Features</button>
+      </div>
+      <div class="row">
+        <button id="drawPoint">𖦏 Point</button>
+        <button id="drawPolygon">⬟ Polygon</button>
+        <button id="stopDrawing">ⓧ Exit Drawing Mode</button>
+        <button id="deleteSelected">🗑️❌ Delete Selected ❌🗑️</button>
+      </div>
+    </div>
+
+    <div id="searchPanel" class="panel">
+      <input id="searchInput" type="text" placeholder="Search place..." />
+      <button id="searchBtn">🔍</button>
+    </div>
+
+    <div id="coord">lat, lon</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+  <script>
+    const state = {
+      manifestUrl: 'https://dinamap-les.s3.ap-southeast-1.amazonaws.com/metadata/layers_202507200627.json',
+      layersConfig: [],
+      layersById: new Map(),
+      features: { type: 'FeatureCollection', features: [] },
+      drawInteraction: null,
+    };
+
+    const map = new ol.Map({
+      target: 'map',
+      layers: [],
+      view: new ol.View({ center: ol.proj.fromLonLat([115.367526, -8.129998]), zoom: 18 }),
+      controls: ol.control.defaults.defaults().extend([
+        new ol.control.ScaleLine({ units: 'metric', bar: true, steps: 6, minWidth: 180 }),
+      ]),
+    });
+    map.on('pointermove', (e) => {
+      const [lon, lat] = ol.proj.toLonLat(e.coordinate);
+      document.getElementById('coord').textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    });
+
+    const featureSource = new ol.source.Vector();
+    const featureLayer = new ol.layer.Vector({
+      source: featureSource,
+      style: (feat) => {
+        const geom = feat.getGeometry();
+        if (geom.getType() === 'Point') {
+          return new ol.style.Style({
+            text: new ol.style.Text({ text: '⌖', font: 'bold 24px sans-serif',
+              fill: new ol.style.Fill({ color: '#ffff00' }), stroke: new ol.style.Stroke({ color: '#000', width: 3 }) })
+          });
+        }
+        return new ol.style.Style({ stroke: new ol.style.Stroke({ color: '#ffff00', width: 2 }), fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }) });
+      },
+      zIndex: 1000,
+    });
+    map.addLayer(featureLayer);
+
+    function syncFeatureButtons() {
+      const has = state.features.features.length > 0;
+      document.getElementById('saveGeojson').disabled = !has;
+      document.getElementById('clearGeojson').disabled = !has;
+    }
+
+    function setFeaturesFromGeoJSON(geojson) {
+      state.features = geojson && geojson.type === 'FeatureCollection' ? geojson : { type: 'FeatureCollection', features: [] };
+      const fmt = new ol.format.GeoJSON();
+      featureSource.clear();
+      if (state.features.features.length) {
+        const feats = fmt.readFeatures(state.features, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
+        featureSource.addFeatures(feats);
+      }
+      syncFeatureButtons();
+    }
+
+    document.getElementById('saveGeojson').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state.features, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `features-${new Date().toISOString().slice(0,10)}.geojson`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById('fileGeojson').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const geojson = JSON.parse(reader.result);
+          if (geojson.type !== 'FeatureCollection') throw new Error('File must be a GeoJSON FeatureCollection');
+          setFeaturesFromGeoJSON(geojson);
+        } catch (err) { alert('Error loading GeoJSON: ' + err.message); }
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById('clearGeojson').addEventListener('click', () => {
+      if (!state.features.features.length) return;
+      if (confirm(`Remove all ${state.features.features.length} features?`)) setFeaturesFromGeoJSON({ type: 'FeatureCollection', features: [] });
+    });
+
+    // Drawing controls
+    function addDrawInteraction(type) {
+      if (state.drawInteraction) map.removeInteraction(state.drawInteraction);
+      const draw = new ol.interaction.Draw({ source: featureSource, type });
+      draw.on('drawend', () => {
+        const fmt = new ol.format.GeoJSON();
+        state.features = fmt.writeFeaturesObject(featureSource.getFeatures(), { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
+        syncFeatureButtons();
+      });
+      map.addInteraction(draw);
+      state.drawInteraction = draw;
+    }
+
+    document.getElementById('drawPoint').addEventListener('click', () => addDrawInteraction('Point'));
+    document.getElementById('drawPolygon').addEventListener('click', () => addDrawInteraction('Polygon'));
+    document.getElementById('stopDrawing').addEventListener('click', () => { if (state.drawInteraction) map.removeInteraction(state.drawInteraction); state.drawInteraction = null; });
+    document.getElementById('deleteSelected').addEventListener('click', () => {
+        const sel = select.getFeatures();
+        if (sel.getLength() === 0) return;
+        if (!confirm(`Delete ${sel.getLength()} selected feature(s)?`)) return;
+        sel.forEach((f) => featureSource.removeFeature(f));
+        sel.clear();
+        resyncFeaturesFromSource();
+    });
+
+    // Nominatim search
+    async function searchPlace(q) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
+        const results = await res.json();
+        if (results.length > 0) {
+          const r = results[0];
+          const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+          map.getView().animate(
+            { zoom: 7, duration: 400 },
+            { center: ol.proj.fromLonLat([lon, lat]), duration: 800 },
+            { zoom: 15, duration: 400 }
+          );
+        } else {
+          alert('No results found');
+        }
+      } catch (e) {
+        alert('Search failed: ' + e.message);
+      }
+    }
+
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      const q = document.getElementById('searchInput').value.trim();
+      if (q) searchPlace(q);
+    });
+    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const q = e.target.value.trim();
+        if (q) searchPlace(q);
+      }
+    });
+
+    async function loadManifest() {
+      try {
+        const res = await fetch(state.manifestUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        state.layersConfig = json.layers || [];
+      } catch (e) {
+        console.warn('Manifest load failed, using inline sample:', e);
+        state.layersConfig = [
+          { id: 'osm', type: 'osm', label: 'OpenStreetMap', visible: true },
+        ];
+      }
+    }
+
+    function buildLayer(cfg) {
+      const { type, url, attributionText, attributionUrl, maxZoom, visible } = cfg;
+      if (type === 'osm') {
+        return new ol.layer.Tile({ visible, source: new ol.source.OSM() });
+      }
+      if (type === 'satellite') {
+        return new ol.layer.Tile({ visible, source: new ol.source.XYZ({ url, attributions: attributionText && attributionUrl ? `Tiles © <a href="${attributionUrl}">${attributionText}</a>` : attributionText || '' , maxZoom }) });
+      }
+      if (type === 'geotiff') {
+        return new ol.layer.WebGLTile({ visible, source: new ol.source.GeoTIFF({ sources: [{ url }], attributions: attributionText || '' }) });
+      }
+      return null;
+    }
+
+    function renderLayerToggles() {
+      const container = document.getElementById('layers');
+      container.innerHTML = '';
+      state.layersConfig.forEach((cfg) => {
+        const id = `layer_${cfg.id}`;
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.id = id; cb.checked = !!cfg.visible;
+        const label = document.createElement('label'); label.htmlFor = id; label.textContent = cfg.label || cfg.id;
+        cb.addEventListener('change', () => {
+          const layer = state.layersById.get(cfg.id);
+          if (layer) layer.setVisible(cb.checked);
+        });
+        container.appendChild(cb); container.appendChild(label);
+      });
+    }
+
+    function applyLayers() {
+      map.getLayers().getArray().slice().forEach((lyr) => { if (lyr !== featureLayer) map.removeLayer(lyr); });
+      state.layersById.clear();
+      state.layersConfig.forEach((cfg) => {
+        const layer = buildLayer(cfg);
+        if (layer) {
+          map.getLayers().insertAt(map.getLayers().getLength()-0, layer);
+          state.layersById.set(cfg.id, layer);
+        }
+      });
+      renderLayerToggles();
+    }
+
+    const select = new ol.interaction.Select();
+    const modify = new ol.interaction.Modify({ features: select.getFeatures() });
+    map.addInteraction(select);
+    map.addInteraction(modify);
+
+    function resyncFeaturesFromSource() {
+        const fmt = new ol.format.GeoJSON();
+        state.features = fmt.writeFeaturesObject(
+            featureSource.getFeatures(),
+            { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' }
+        );
+        syncFeatureButtons();
+    }
+
+    modify.on('modifyend', resyncFeaturesFromSource);
+    featureSource.on('removefeature', resyncFeaturesFromSource);
+
+    (async function init() {
+      await loadManifest();
+      applyLayers();
+      setFeaturesFromGeoJSON({ type: 'FeatureCollection', features: [] });
+    })();
+  </script>
+</body>
 </html>

@@ -9,7 +9,7 @@
   },
   "homepage": "https://mochuelo-kun.github.io/dinapmap-les",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",

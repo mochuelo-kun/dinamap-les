@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MARKER_TYPES } from './markerUtils';
+import { MARKER_TYPES, createFeature } from './markerUtils';
 import './MarkerForm.css';
 
-const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingMarker, clickCoordinates }) => {
+const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingFeature, clickCoordinates }) => {
   const [formData, setFormData] = useState({
     type: MARKER_TYPES.CORAL_TABLE,
     label: '',
@@ -14,15 +14,24 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingMarker, clickCoo
   });
 
   useEffect(() => {
-    if (editingMarker) {
+    if (editingFeature) {
+      console.log('editingFeature');
+      console.log(editingFeature);
+      const props = editingFeature.properties;
+      const coords = editingFeature.geometry.coordinates;
+      console.log('coords');
+      console.log(coords);
       setFormData({
-        type: editingMarker.type,
-        label: editingMarker.label || '',
-        notes: editingMarker.notes || '',
-        dateAdded: editingMarker.dateAdded || '',
-        dateRemoved: editingMarker.dateRemoved || '',
-        latitude: editingMarker.latitude.toFixed(6),
-        longitude: editingMarker.longitude.toFixed(6)
+        id: props.id,
+        type: props.type,
+        label: props.label || '',
+        notes: props.notes || '',
+        dateAdded: props.dateAdded || '',
+        dateRemoved: props.dateRemoved || '',
+        latitude: editingFeature.geometry.type == 'Point' ? coords[1].toFixed(6) : '',
+        longitude: editingFeature.geometry.type == 'Point' ? coords[0].toFixed(6) : '',
+        createdAt: props.createdAt,
+        updatedAt: props.updatedAt
       });
     } else if (clickCoordinates) {
       setFormData(prev => ({
@@ -31,7 +40,7 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingMarker, clickCoo
         longitude: clickCoordinates.lng.toFixed(6)
       }));
     }
-  }, [editingMarker, clickCoordinates]);
+  }, [editingFeature, clickCoordinates]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -44,23 +53,13 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingMarker, clickCoo
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    const markerData = {
+    const feature = createFeature({
       ...formData,
-      latitude: parseFloat(formData.latitude),
-      longitude: parseFloat(formData.longitude),
-      id: editingMarker?.id || Date.now().toString(),
-      createdAt: editingMarker?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+      id: editingFeature?.properties.id || Date.now().toString(),
+      createdAt: editingFeature?.properties.createdAt || new Date().toISOString()
+    });
 
-    if (formData.dateAdded) {
-      markerData.dateAdded = formData.dateAdded;
-    }
-    if (formData.dateRemoved) {
-      markerData.dateRemoved = formData.dateRemoved;
-    }
-
-    onSave(markerData);
+    onSave(feature);
     handleClose();
   };
 
@@ -78,10 +77,10 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingMarker, clickCoo
   };
 
   const handleDelete = () => {
-    if (!editingMarker) return;
+    if (!editingFeature) return;
     
-    if (window.confirm('Are you sure you want to delete this marker? This action cannot be undone.')) {
-      onDelete(editingMarker.id);
+    if (window.confirm('Are you sure you want to delete this feature? This action cannot be undone.')) {
+      onDelete(editingFeature.properties.id);
       handleClose();
     }
   };
@@ -92,7 +91,7 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingMarker, clickCoo
     <div className="marker-form-overlay">
       <div className="marker-form-container">
         <div className="marker-form-header">
-          <h3>{editingMarker ? 'Edit Marker' : 'Add New Marker'}</h3>
+          <h3>{editingFeature ? 'Edit Feature' : 'Add New Feature'}</h3>
           <button 
             type="button" 
             className="marker-form-close"
@@ -207,7 +206,7 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingMarker, clickCoo
           </div>
 
           <div className="form-actions">
-            {editingMarker && (
+            {editingFeature && (
               <button type="button" onClick={handleDelete} className="btn-delete">
                 Delete
               </button>
@@ -217,7 +216,7 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingMarker, clickCoo
                 Cancel
               </button>
               <button type="submit" className="btn-save">
-                {editingMarker ? 'Update Marker' : 'Add Marker'}
+                {editingFeature ? 'Update Feature' : 'Add Feature'}
               </button>
             </div>
           </div>

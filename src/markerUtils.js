@@ -5,42 +5,52 @@ export const MARKER_TYPES = {
   OTHER: 'other'
 };
 
-export const createGeoJSONFromMarkers = (markers) => {
+export const createFeature = (formData) => {
   return {
-    type: "FeatureCollection",
-    features: markers.map(marker => ({
-      type: "Feature",
-      properties: {
-        id: marker.id,
-        type: marker.type,
-        label: marker.label,
-        notes: marker.notes,
-        dateAdded: marker.dateAdded,
-        dateRemoved: marker.dateRemoved,
-        createdAt: marker.createdAt,
-        updatedAt: marker.updatedAt
-      },
-      geometry: {
-        type: "Point",
-        coordinates: [marker.longitude, marker.latitude]
-      }
-    }))
+    type: "Feature",
+    properties: {
+      id: formData.id || Date.now().toString(),
+      type: formData.type,
+      label: formData.label || '',
+      notes: formData.notes || '',
+      dateAdded: formData.dateAdded || null,
+      dateRemoved: formData.dateRemoved || null,
+      createdAt: formData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    geometry: {
+      type: "Point",
+      coordinates: [parseFloat(formData.longitude), parseFloat(formData.latitude)]
+    }
   };
 };
 
-export const createMarkersFromGeoJSON = (geojson) => {
-  if (!geojson || !geojson.features) return [];
-  
-  return geojson.features.map(feature => ({
-    id: feature.properties.id,
-    type: feature.properties.type || MARKER_TYPES.OTHER,
-    label: feature.properties.label || '',
-    notes: feature.properties.notes || '',
-    dateAdded: feature.properties.dateAdded || null,
-    dateRemoved: feature.properties.dateRemoved || null,
-    latitude: feature.geometry.coordinates[1],
-    longitude: feature.geometry.coordinates[0],
-    createdAt: feature.properties.createdAt,
-    updatedAt: feature.properties.updatedAt
-  }));
+export const createEmptyGeoJSON = () => {
+  return {
+    type: "FeatureCollection",
+    features: []
+  };
+};
+
+export const addFeatureToGeoJSON = (geojson, feature) => {
+  return {
+    ...geojson,
+    features: [...geojson.features, feature]
+  };
+};
+
+export const updateFeatureInGeoJSON = (geojson, featureId, updatedFeature) => {
+  return {
+    ...geojson,
+    features: geojson.features.map(f => 
+      f.properties.id === featureId ? updatedFeature : f
+    )
+  };
+};
+
+export const removeFeatureFromGeoJSON = (geojson, featureId) => {
+  return {
+    ...geojson,
+    features: geojson.features.filter(f => f.properties.id !== featureId)
+  };
 };

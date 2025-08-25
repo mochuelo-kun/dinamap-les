@@ -12,6 +12,7 @@ import {
   SEGARA_LESTARI_HOME_LONLAT_COORDS,
   SEGARA_LESTARI_HOME_ZOOM,
 } from './mapConfig';
+import { createEmptyGeoJSON, addFeatureToGeoJSON, updateFeatureInGeoJSON, removeFeatureFromGeoJSON } from './markerUtils';
 
 const lookupAddress = async (address) => {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
@@ -35,7 +36,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [clickCoordinates, setCoordinates] = useState(null); // For click on map
   const [searchCoordinates, setSearchCoordinates] = useState(null); // For search input
-  const [markers, setMarkers] = useState([]);
+  const [featuresGeoJSON, setFeaturesGeoJSON] = useState(createEmptyGeoJSON());
   const [showMarkerForm, setShowMarkerForm] = useState(false);
   const [editingMarker, setEditingMarker] = useState(null);
   const [addMarkerMode, setAddMarkerMode] = useState(false);
@@ -66,8 +67,8 @@ function App() {
     setCoordinates(null);
   };
 
-  const handleMarkerClick = (marker) => {
-    setEditingMarker(marker);
+  const handleFeatureClick = (feature) => {
+    setEditingMarker(feature);
     setShowMarkerForm(true);
   };
 
@@ -76,16 +77,16 @@ function App() {
     setCoordinates(null);
   };
 
-  const handleMarkerSave = (markerData) => {
+  const handleFeatureSave = (feature) => {
     if (editingMarker) {
-      setMarkers(prev => prev.map(m => m.id === markerData.id ? markerData : m));
+      setFeaturesGeoJSON(prev => updateFeatureInGeoJSON(prev, feature.properties.id, feature));
     } else {
-      setMarkers(prev => [...prev, markerData]);
+      setFeaturesGeoJSON(prev => addFeatureToGeoJSON(prev, feature));
     }
   };
 
-  const handleMarkerDelete = (markerId) => {
-    setMarkers(prev => prev.filter(m => m.id !== markerId));
+  const handleFeatureDelete = (featureId) => {
+    setFeaturesGeoJSON(prev => removeFeatureFromGeoJSON(prev, featureId));
   };
 
   const handleMarkerFormClose = () => {
@@ -118,8 +119,8 @@ function App() {
         onCoordinateClick={handleCoordinateClick}
         clickCoordinates={clickCoordinates}
         searchCoordinates={searchCoordinates}
-        markers={markers}
-        onMarkerClick={handleMarkerClick}
+        featuresGeoJSON={featuresGeoJSON}
+        onFeatureClick={handleFeatureClick}
         addMarkerMode={addMarkerMode}
       />
       <LayerToggle
@@ -132,16 +133,16 @@ function App() {
       />
       <SearchBar onSearch={handleAddressSearch} />
       <MarkerControls
-        markers={markers}
-        onMarkersChange={setMarkers}
+        featuresGeoJSON={featuresGeoJSON}
+        onFeaturesChange={setFeaturesGeoJSON}
         onAddMarkerClick={handleAddMarkerClick}
       />
       <MarkerForm
         isOpen={showMarkerForm}
         onClose={handleMarkerFormClose}
-        onSave={handleMarkerSave}
-        onDelete={handleMarkerDelete}
-        editingMarker={editingMarker}
+        onSave={handleFeatureSave}
+        onDelete={handleFeatureDelete}
+        editingFeature={editingMarker}
         clickCoordinates={addMarkerMode ? clickCoordinates : null}
       />
     </div>

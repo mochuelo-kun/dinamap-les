@@ -1,102 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import Feature from 'ol/Feature';
-import Point from 'ol/geom/Point';
-import { Style, Icon, Fill, Stroke, Text } from 'ol/style';
-import { fromLonLat } from 'ol/proj';
-import { MARKER_TYPES } from './markerUtils';
+import GeoJSON from 'ol/format/GeoJSON';
+import { Fill, Icon, Stroke, Style, Text } from 'ol/style';
 
-const MARKER_STYLES = {
-  [MARKER_TYPES.CORAL_TABLE]: new Style({
-    image: new Icon({
-      src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" fill="#ff6b35" stroke="#fff" stroke-width="2"/>
-          <text x="12" y="16" text-anchor="middle" fill="white" font-family="Arial" font-size="12">🪸</text>
-        </svg>
-      `),
-      scale: 1.2
-    }),
-    text: new Text({
-      offsetY: -30,
-      fill: new Fill({ color: '#000' }),
-      stroke: new Stroke({ color: '#fff', width: 2 }),
-      font: '12px Arial'
-    })
+const FEATURE_STYLE = new Style({
+  fill: new Fill({
+    color: 'rgba(0, 0, 0, 0)' // No fill - transparent
   }),
-  [MARKER_TYPES.NATURAL_FEATURE]: new Style({
-    image: new Icon({
-      src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" fill="#2ecc71" stroke="#fff" stroke-width="2"/>
-          <text x="12" y="16" text-anchor="middle" fill="white" font-family="Arial" font-size="12">🐠</text>
-        </svg>
-      `),
-      scale: 1.2
-    }),
-    text: new Text({
-      offsetY: -30,
-      fill: new Fill({ color: '#000' }),
-      stroke: new Stroke({ color: '#fff', width: 2 }),
-      font: '12px Arial'
-    })
+  stroke: new Stroke({
+    color: '#ffff00', // Yellow border
+    width: 2
   }),
-  [MARKER_TYPES.MONITORING_POINT]: new Style({
-    image: new Icon({
-      src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" fill="#3498db" stroke="#fff" stroke-width="2"/>
-          <text x="12" y="16" text-anchor="middle" fill="white" font-family="Arial" font-size="12">📊</text>
-        </svg>
-      `),
-      scale: 1.2
-    }),
-    text: new Text({
-      offsetY: -30,
-      fill: new Fill({ color: '#000' }),
-      stroke: new Stroke({ color: '#fff', width: 2 }),
-      font: '12px Arial'
-    })
+});
+
+const MARKER_STYLE = new Style({
+  text: new Text({
+    text: '⌖',
+    font: 'bold 24px sans-serif',
+    fill: new Fill({ color: '#ffff00' }),
+    stroke: new Stroke({ color: '#000000', width: 3 }),
+    offsetY: 0,
   }),
-  [MARKER_TYPES.OTHER]: new Style({
-    image: new Icon({
-      src: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" fill="#9b59b6" stroke="#fff" stroke-width="2"/>
-          <text x="12" y="16" text-anchor="middle" fill="white" font-family="Arial" font-size="12">📍</text>
-        </svg>
-      `),
-      scale: 1.2
-    }),
-    text: new Text({
-      offsetY: -30,
-      fill: new Fill({ color: '#000' }),
-      stroke: new Stroke({ color: '#fff', width: 2 }),
-      font: '12px Arial'
-    })
-  })
-};
+});
 
-const createMarkerFeature = (marker) => {
-  const feature = new Feature({
-    geometry: new Point(fromLonLat([marker.longitude, marker.latitude])),
-    markerId: marker.id,
-    markerData: marker
-  });
-  
-  const style = MARKER_STYLES[marker.type].clone();
-  if (marker.label) {
-    style.getText().setText(marker.label);
-  }
-  
-  feature.setStyle(style);
-  return feature;
-};
-
-
-const MarkerManager = ({ map, markers, onMarkerClick }) => {
-  const [markerLayer, setMarkerLayer] = useState(null);
+const FeatureManager = ({ map, featuresGeoJSON, onFeatureClick }) => {
+  const [featureLayer, setFeatureLayer] = useState(null);
 
   useEffect(() => {
     if (!map) return;
@@ -104,19 +33,25 @@ const MarkerManager = ({ map, markers, onMarkerClick }) => {
     const vectorSource = new VectorSource();
     const vectorLayer = new VectorLayer({
       source: vectorSource,
+      style: (feature) => feature.getGeometry().getType() === 'Point' ? MARKER_STYLE : FEATURE_STYLE,
       zIndex: 1000
     });
 
     map.addLayer(vectorLayer);
-    setMarkerLayer(vectorLayer);
+    setFeatureLayer(vectorLayer);
 
     const handleMapClick = (event) => {
       const feature = map.forEachFeatureAtPixel(event.pixel, (feature) => {
-        return feature.get('markerId') ? feature : null;
+        return feature.get('featureId') ? feature : null;
       });
 
-      if (feature && onMarkerClick) {
-        onMarkerClick(feature.get('markerData'));
+      if (feature && onFeatureClick) {
+        // Find the original GeoJSON feature from the data
+        const featureId = feature.get('featureId');
+        const originalFeature = featuresGeoJSON.features.find(f => f.properties.id === featureId);
+        if (originalFeature) {
+          onFeatureClick(originalFeature);
+        }
       }
     };
 
@@ -126,21 +61,40 @@ const MarkerManager = ({ map, markers, onMarkerClick }) => {
       map.removeLayer(vectorLayer);
       map.un('singleclick', handleMapClick);
     };
-  }, [map, onMarkerClick]);
+  }, [map, onFeatureClick, featuresGeoJSON]);
 
   useEffect(() => {
-    if (!markerLayer || !markers) return;
+    if (!featureLayer || !featuresGeoJSON) return;
 
-    const source = markerLayer.getSource();
+    const source = featureLayer.getSource();
     source.clear();
 
-    markers.forEach(marker => {
-      const feature = createMarkerFeature(marker);
-      source.addFeature(feature);
-    });
-  }, [markerLayer, markers]);
+    if (featuresGeoJSON.features && featuresGeoJSON.features.length > 0) {
+      const format = new GeoJSON();
+      const features = format.readFeatures(featuresGeoJSON, {
+        dataProjection: 'EPSG:4326',
+        featureProjection: 'EPSG:3857'
+      });
+
+      // Add metadata to each feature for click handling
+      features.forEach(feature => {
+        const originalFeature = featuresGeoJSON.features.find(f => 
+          f.properties.id === feature.get('id')
+        );
+        if (originalFeature) {
+          feature.set('featureId', originalFeature.properties.id);
+          feature.set('properties', originalFeature.properties);
+          // Don't store the raw geometry object - OpenLayers will handle geometry internally
+
+          // feature.getStyle().getText().text = originalFeature.properties.label;
+        }
+      });
+
+      source.addFeatures(features);
+    }
+  }, [featureLayer, featuresGeoJSON]);
 
   return null;
 };
 
-export default MarkerManager;
+export default FeatureManager;

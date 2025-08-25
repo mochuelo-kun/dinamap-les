@@ -13,7 +13,7 @@ import Point from 'ol/geom/Point';
 import { Style, Text, Fill, Stroke } from 'ol/style';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { ScaleLine, defaults as defaultControls } from 'ol/control';
-import MarkerManager from './MarkerManager';
+import FeatureManager from './MarkerManager';
 import 'ol/ol.css';
 import './Map.css';
 import {
@@ -39,8 +39,8 @@ const MapComponent = ({
   onCoordinateClick, 
   clickCoordinates, 
   searchCoordinates,
-  markers,
-  onMarkerClick,
+  featuresGeoJSON,
+  onFeatureClick,
   addMarkerMode
 }) => {
   const mapRef = useRef();
@@ -161,17 +161,22 @@ const MapComponent = ({
     if (!map) return;
 
     const handleMapClick = (event) => {
-      // Check if clicking on an existing marker
+      // Check if clicking on an existing feature
       const feature = map.forEachFeatureAtPixel(event.pixel, (feature) => {
-        return feature.get('markerId') ? feature : null;
+        return feature.get('featureId') ? feature : null;
       });
 
-      if (feature && onMarkerClick && !addMarkerMode) {
-        onMarkerClick(feature.get('markerData'));
+      if (feature && onFeatureClick && !addMarkerMode) {
+        // Find the original GeoJSON feature from the data
+        const featureId = feature.get('featureId');
+        const originalFeature = featuresGeoJSON.features.find(f => f.properties.id === featureId);
+        if (originalFeature) {
+          onFeatureClick(originalFeature);
+        }
         return;
       }
 
-      // Handle coordinate click (for coordinate display or adding markers)
+      // Handle coordinate click (for coordinate display or adding features)
       const coordinate = toLonLat(event.coordinate);
       const [lng, lat] = coordinate;
       
@@ -185,7 +190,7 @@ const MapComponent = ({
     return () => {
       map.un('singleclick', handleMapClick);
     };
-  }, [map, onCoordinateClick, onMarkerClick, addMarkerMode]);
+  }, [map, onCoordinateClick, onFeatureClick, addMarkerMode, featuresGeoJSON]);
 
   return (
     <>
@@ -197,10 +202,10 @@ const MapComponent = ({
         }} 
         ref={mapRef}
       />
-      <MarkerManager
+      <FeatureManager
         map={map}
-        markers={markers}
-        onMarkerClick={onMarkerClick}
+        featuresGeoJSON={featuresGeoJSON}
+        onFeatureClick={onFeatureClick}
       />
     </>
   );

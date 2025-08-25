@@ -1,3 +1,28 @@
+<!--
+## CHANGELOG
+
+### 0.0.x (Claude & Mochuelo-kun)
+  - Initial PoC with React as a wrapper around OpenLayers that turned out to be unnecessarily complicated and headachey
+  - A bunch of mistakes with Git LFS before realizing S3 was the way to go for COG GeoTIFF storage
+  - Successful PoC deployment to Github Pages (frontend) + S3 (GeoTIFF and config/manifest hosting)
+
+### 0.1.0 (GPT 5)
+  - GPT 5 crushes it with a total overhaul refactor that rips out React and slims us down to a single <500 line html+css+js one shot (and faster, smoother, less buggy)
+
+#### 0.1.1 (GPT 5)
+  - Modes & clear UI: added Select, Modify, and Draw (Point/Line/Polygon) with an active button state. “Stop” drops you back to Select. Delete button auto-enables when something’s selected.
+  - No overlap with OL controls: shifted the features panel down a bit (top: 4.5rem) and added a simple active style for buttons.
+  - Mobile-friendly info panel: replaced the hover coords with a click-based info panel (dismissable).
+  - Click on empty map → drops a small temporary marker and shows lat, lon.
+  - Click on a feature → centers a marker on it and shows GeoJSON properties (everything except geometry) + the feature’s center coords.
+
+#### 0.1.2 (Mochuelo-kun)
+  - Add CHANGELOG
+  - Change title
+  - Fix minor bugs: explicitly load GeoTIFF lib before OL, var cleanup
+
+-->
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -10,69 +35,101 @@
     #app { height: 100%; width: 100%; position: relative; }
     #map { height: 100%; width: 100%; }
 
+    /* UI chrome */
     .panel { position: absolute; z-index: 1000; background: rgba(255,255,255,0.95); color: #222; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
     .panel h3 { margin: 0 0 8px 0; font-size: 14px; }
 
     #layersPanel { top: .75rem; right: .75rem; padding: .75rem; min-width: 260px; }
     #layers { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; font-size: 14px; }
 
-    #featuresPanel { left: .75rem; top: .75rem; padding: .75rem; display: grid; gap: 8px; min-width: 220px; }
+    #featuresPanel { left: .75rem; top: .75rem; padding: .75rem; display: grid; gap: 8px; min-width: 260px; }
     #featuresPanel .row { display: flex; gap: 8px; flex-wrap: wrap; }
     #featuresPanel button, #featuresPanel label.btn { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
     #featuresPanel button:disabled { opacity: .5; cursor: not-allowed; }
     #featuresPanel input[type=file] { display: none; }
 
-    #searchPanel { position: absolute; top: .75rem; left: 50%; transform: translateX(-50%); padding: .5rem; width: min(90%, 420px); display: flex; gap: 4px; }
-    #searchInput { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #aaa; font-size: 14px; }
-    #searchBtn { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+    /* Avoid overlapping OL controls; add active button styling */
+    #featuresPanel { top: 4.5rem; }
+    .panel button.active { background: #222; color: #fff; border-color: #222; }
+    #coord { min-width: 260px; }
 
+    /* Search bar */
+    #searchPanel { position: absolute; left: 50%; top: .75rem; transform: translateX(-50%); width: min(720px, calc(100% - 1.5rem)); z-index: 1001; }
+    #searchBox { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid #bbb; background: rgba(255,255,255,0.98); font-size: 14px; }
+    #searchResults { position: absolute; left: 0; right: 0; margin-top: 6px; background: rgba(255,255,255,0.98); border: 1px solid #ccc; border-radius: 8px; overflow: hidden; display: none; }
+    #searchResults .item { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; }
+    #searchResults .item:last-child { border-bottom: 0; }
+    #searchResults .item:hover { background: #f3f3f3; }
+
+    /* Tiny coordinate readout */
     #coord { position: absolute; left: .75rem; bottom: .75rem; padding: 6px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: rgba(255,255,255,0.9); border-radius: 6px; border: 1px solid #ccc; z-index: 1000; }
+
+    @media (max-width: 640px) {
+      #layersPanel, #featuresPanel { min-width: unset; width: calc(100% - 1.5rem); }
+      #layersPanel { top: auto; bottom: .75rem; right: .75rem; }
+      #featuresPanel { top: .75rem; left: .75rem; }
+      #searchPanel { left: .75rem; right: .75rem; transform: none; width: calc(100% - 1.5rem); }
+    }
   </style>
 </head>
 <body>
   <div id="app">
     <div id="map"></div>
 
+    <!-- Search (Nominatim) -->
+    <div id="searchPanel">
+      <input id="searchBox" type="search" placeholder="Search places (Nominatim)…" autocomplete="off" />
+      <div id="searchResults"></div>
+    </div>
+
+    <!-- Layers / toggles built from a manifest.json (COGs + basemap) -->
     <div id="layersPanel" class="panel">
       <h3>Layers</h3>
       <div id="layers"></div>
     </div>
 
+    <!-- GeoJSON I/O + drawing toolbar -->
     <div id="featuresPanel" class="panel">
       <h3>Features</h3>
+      <div class="row" style="gap:6px; flex-wrap:wrap">
+        <button id="selectMode" title="Browse/Select">☝️ Select</button>
+        <button id="modifyMode" title="Edit geometry">✏️ Modify</button>
+        <button id="drawPoint">• Point</button>
+        <button id="drawLine">— Line</button>
+        <button id="drawPoly">▰ Polygon</button>
+        <button id="stopDraw" title="Stop drawing / disable interactions">⏹ Stop</button>
+        <button id="deleteSelected" disabled>🗑️ Delete selected</button>
+      </div>
       <div class="row">
         <button id="saveGeojson" disabled>💾 Save GeoJSON</button>
         <label class="btn" for="fileGeojson">📁 Load GeoJSON</label>
         <input id="fileGeojson" type="file" accept=".geojson,.json" />
-        <button id="clearGeojson" disabled>🧹 Clear All Features</button>
-      </div>
-      <div class="row">
-        <button id="drawPoint">𖦏 Point</button>
-        <button id="drawPolygon">⬟ Polygon</button>
-        <button id="stopDrawing">ⓧ Exit Drawing Mode</button>
-        <button id="deleteSelected">🗑️❌ Delete Selected ❌🗑️</button>
+        <button id="clearGeojson" disabled>🧹 Clear all</button>
       </div>
     </div>
 
-    <div id="searchPanel" class="panel">
-      <input id="searchInput" type="text" placeholder="Search place..." />
-      <button id="searchBtn">🔍</button>
+    <div id="coord" class="panel" style="left:.75rem; bottom:.75rem; display:none; padding:.5rem .75rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;">
+        <strong>Info</strong>
+        <button id="coordClose" title="Close" style="border:1px solid #bbb;background:#fff;border-radius:6px;cursor:pointer;padding:2px 6px;">×</button>
+      </div>
+      <div id="coordBody" style="margin-top:.5rem;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;"></div>
     </div>
-
-    <div id="coord">lat, lon</div>
   </div>
 
+  <!-- OpenLayers GeoTIFF features need geotiff library loaded first -->
   <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
   <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
   <script>
+    // ---- Minimal state -------------------------------------------------------
     const state = {
       manifestUrl: 'https://dinamap-les.s3.ap-southeast-1.amazonaws.com/metadata/layers_202507200627.json',
       layersConfig: [],
       layersById: new Map(),
       features: { type: 'FeatureCollection', features: [] },
-      drawInteraction: null,
     };
 
+    // ---- Map init ------------------------------------------------------------
     const map = new ol.Map({
       target: 'map',
       layers: [],
@@ -81,12 +138,54 @@
         new ol.control.ScaleLine({ units: 'metric', bar: true, steps: 6, minWidth: 180 }),
       ]),
     });
-    map.on('pointermove', (e) => {
-      const [lon, lat] = ol.proj.toLonLat(e.coordinate);
-      document.getElementById('coord').textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+
+    // Coordinate/feature info on click (mobile-friendly)
+    const infoEl = document.getElementById('coord');
+    const infoBody = document.getElementById('coordBody');
+    const coordClose = document.getElementById('coordClose');
+    coordClose.addEventListener('click', () => { infoEl.style.display = 'none'; tempSource && tempSource.clear(); });
+
+    function fmtLatLon(coord3857) {
+      const [lon, lat] = ol.proj.toLonLat(coord3857);
+      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    }
+    function featureCenter(feat) {
+      const g = feat.getGeometry();
+      const t = g.getType();
+      if (t === 'Point') return g.getCoordinates();
+      if (t === 'LineString') return g.getCoordinateAt(0.5);
+      if (t === 'Polygon') return g.getInteriorPoint().getCoordinates();
+      try { return ol.extent.getCenter(g.getExtent()); } catch (e) { return g.getFirstCoordinate(); }
+    }
+
+    map.on('singleclick', (evt) => {
+      const hit = map.forEachFeatureAtPixel(evt.pixel, f => f, { layerFilter: l => l === featureLayer });
+      tempSource.clear();
+      let html = '';
+      if (hit) {
+        const center = featureCenter(hit);
+        tempSource.addFeature(new ol.Feature(new ol.geom.Point(center)));
+        const props = { ...hit.getProperties() }; delete props.geometry;
+        const propsHtml = Object.keys(props).length
+          ? Object.entries(props).map(([k,v]) => `<div><b>${k}</b>: ${String(v)}</div>`).join('')
+          : '<em>No properties</em>';
+        html = `<div>Center: ${fmtLatLon(center)}</div>` + propsHtml;
+      } else {
+        tempSource.addFeature(new ol.Feature(new ol.geom.Point(evt.coordinate)));
+        html = `Coords: ${fmtLatLon(evt.coordinate)}`;
+      }
+      infoBody.innerHTML = html;
+      infoEl.style.display = 'block';
     });
 
+    // ---- Feature layer & interactions ---------------------------------------
     const featureSource = new ol.source.Vector();
+    const selectInteraction = new ol.interaction.Select({
+      layers: undefined,
+    });
+    const modifyInteraction = new ol.interaction.Modify({ source: featureSource });
+    modifyInteraction.setActive(false);
+
     const featureLayer = new ol.layer.Vector({
       source: featureSource,
       style: (feat) => {
@@ -101,7 +200,108 @@
       },
       zIndex: 1000,
     });
+
     map.addLayer(featureLayer);
+    // Temporary marker layer for clicks/highlights
+    const tempSource = new ol.source.Vector();
+    const tempLayer = new ol.layer.Vector({
+      source: tempSource,
+    //   style: new ol.style.Style({
+    //     image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: '#ffff00' }), stroke: new ol.style.Stroke({ color: '#000', width: 2 }) })
+    //   }),
+      style: new ol.style.Style({
+        text: new ol.style.Text({ text: '⌖', font: 'bold 24px sans-serif',
+        fill: new ol.style.Fill({ color: '#ffffff' }),
+        stroke: new ol.style.Stroke({ color: '#fffff', width: 3 }) })
+      }),
+      zIndex: 1100,
+    //   zIndex: 9000,
+    });
+    map.addLayer(tempLayer);
+    map.addInteraction(selectInteraction);
+    map.addInteraction(modifyInteraction);
+
+    // Keep state.features in sync with the vector source
+    const gjFmt = new ol.format.GeoJSON();
+    function refreshStateFromSource() {
+      const fc = gjFmt.writeFeaturesObject(featureSource.getFeatures(), { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
+      state.features = fc;
+      syncFeatureButtons();
+    }
+    featureSource.on('addfeature', refreshStateFromSource);
+    featureSource.on('changefeature', refreshStateFromSource);
+    featureSource.on('removefeature', refreshStateFromSource);
+
+    // Mode + drawing controls
+    let mode = 'browse';
+    const btns = {
+      select: document.getElementById('selectMode'),
+      modify: document.getElementById('modifyMode'),
+      drawPoint: document.getElementById('drawPoint'),
+      drawLine: document.getElementById('drawLine'),
+      drawPoly: document.getElementById('drawPoly'),
+      stop: document.getElementById('stopDraw'),
+    };
+
+    let drawInteraction = null;
+    function startDraw(type) {
+      if (drawInteraction) map.removeInteraction(drawInteraction);
+      drawInteraction = new ol.interaction.Draw({ source: featureSource, type });
+      map.addInteraction(drawInteraction);
+      drawInteraction.on('drawend', () => setTimeout(refreshStateFromSource, 0));
+    }
+    function stopDraw() { if (drawInteraction) { map.removeInteraction(drawInteraction); drawInteraction = null; } }
+
+    function setMode(next) {
+      mode = next;
+      const isBrowse = mode === 'browse';
+      const isModify = mode === 'modify';
+      selectInteraction.setActive(isBrowse || isModify);
+      modifyInteraction.setActive(isModify);
+      stopDraw();
+      if (mode.startsWith('draw:')) startDraw(mode.split(':')[1]);
+
+      // UI states
+      Object.values(btns).forEach(b => b && b.classList.remove('active'));
+      if (isBrowse) btns.select && btns.select.classList.add('active');
+      if (isModify) btns.modify && btns.modify.classList.add('active');
+      if (mode === 'draw:Point') btns.drawPoint.classList.add('active');
+      if (mode === 'draw:LineString') btns.drawLine.classList.add('active');
+      if (mode === 'draw:Polygon') btns.drawPoly.classList.add('active');
+      updateDeleteBtn && updateDeleteBtn();
+    }
+
+    btns.select.onclick = () => setMode('browse');
+    btns.modify.onclick = () => setMode('modify');
+    btns.drawPoint.onclick = () => setMode('draw:Point');
+    btns.drawLine.onclick = () => setMode('draw:LineString');
+    btns.drawPoly.onclick = () => setMode('draw:Polygon');
+    btns.stop.onclick = () => setMode('browse');
+
+    // Delete selected features
+    const deleteBtn = document.getElementById('deleteSelected');
+    selectInteraction.on('select', () => {
+      deleteBtn.disabled = selectInteraction.getFeatures().getLength() === 0;
+    });
+    deleteBtn.onclick = () => {
+      const sel = selectInteraction.getFeatures();
+      sel.getArray().forEach(f => featureSource.removeFeature(f));
+      sel.clear();
+    };
+    // Keyboard delete
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Delete' || (e.key === 'Backspace' && (e.ctrlKey || e.metaKey))) {
+        const sel = selectInteraction.getFeatures();
+        if (sel.getLength()) {
+          sel.getArray().forEach(f => featureSource.removeFeature(f)); sel.clear();
+          e.preventDefault();
+        }
+      }
+    });
+
+    function updateDeleteBtn() { deleteBtn.disabled = !(selectInteraction.getFeatures().getLength() > 0 && (mode === 'browse' || mode === 'modify')); }
+    selectInteraction.on('select', updateDeleteBtn);
+    setMode('browse');
 
     function syncFeatureButtons() {
       const has = state.features.features.length > 0;
@@ -111,15 +311,15 @@
 
     function setFeaturesFromGeoJSON(geojson) {
       state.features = geojson && geojson.type === 'FeatureCollection' ? geojson : { type: 'FeatureCollection', features: [] };
-      const fmt = new ol.format.GeoJSON();
       featureSource.clear();
       if (state.features.features.length) {
-        const feats = fmt.readFeatures(state.features, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
+        const feats = gjFmt.readFeatures(state.features, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
         featureSource.addFeatures(feats);
       }
       syncFeatureButtons();
     }
 
+    // ---- GeoJSON I/O ---------------------------------------------------------
     document.getElementById('saveGeojson').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(state.features, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
@@ -128,7 +328,6 @@
       a.click();
       URL.revokeObjectURL(a.href);
     });
-
     document.getElementById('fileGeojson').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -143,69 +342,12 @@
       };
       reader.readAsText(file);
     });
-
     document.getElementById('clearGeojson').addEventListener('click', () => {
       if (!state.features.features.length) return;
       if (confirm(`Remove all ${state.features.features.length} features?`)) setFeaturesFromGeoJSON({ type: 'FeatureCollection', features: [] });
     });
 
-    // Drawing controls
-    function addDrawInteraction(type) {
-      if (state.drawInteraction) map.removeInteraction(state.drawInteraction);
-      const draw = new ol.interaction.Draw({ source: featureSource, type });
-      draw.on('drawend', () => {
-        const fmt = new ol.format.GeoJSON();
-        state.features = fmt.writeFeaturesObject(featureSource.getFeatures(), { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
-        syncFeatureButtons();
-      });
-      map.addInteraction(draw);
-      state.drawInteraction = draw;
-    }
-
-    document.getElementById('drawPoint').addEventListener('click', () => addDrawInteraction('Point'));
-    document.getElementById('drawPolygon').addEventListener('click', () => addDrawInteraction('Polygon'));
-    document.getElementById('stopDrawing').addEventListener('click', () => { if (state.drawInteraction) map.removeInteraction(state.drawInteraction); state.drawInteraction = null; });
-    document.getElementById('deleteSelected').addEventListener('click', () => {
-        const sel = select.getFeatures();
-        if (sel.getLength() === 0) return;
-        if (!confirm(`Delete ${sel.getLength()} selected feature(s)?`)) return;
-        sel.forEach((f) => featureSource.removeFeature(f));
-        sel.clear();
-        resyncFeaturesFromSource();
-    });
-
-    // Nominatim search
-    async function searchPlace(q) {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
-        const results = await res.json();
-        if (results.length > 0) {
-          const r = results[0];
-          const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
-          map.getView().animate(
-            { zoom: 7, duration: 400 },
-            { center: ol.proj.fromLonLat([lon, lat]), duration: 800 },
-            { zoom: 15, duration: 400 }
-          );
-        } else {
-          alert('No results found');
-        }
-      } catch (e) {
-        alert('Search failed: ' + e.message);
-      }
-    }
-
-    document.getElementById('searchBtn').addEventListener('click', () => {
-      const q = document.getElementById('searchInput').value.trim();
-      if (q) searchPlace(q);
-    });
-    document.getElementById('searchInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const q = e.target.value.trim();
-        if (q) searchPlace(q);
-      }
-    });
-
+    // ---- Layers manifest (COGs + basemaps) ----------------------------------
     async function loadManifest() {
       try {
         const res = await fetch(state.manifestUrl, { cache: 'no-store' });
@@ -214,6 +356,7 @@
         state.layersConfig = json.layers || [];
       } catch (e) {
         console.warn('Manifest load failed, using inline sample:', e);
+        // Fallback minimal example
         state.layersConfig = [
           { id: 'osm', type: 'osm', label: 'OpenStreetMap', visible: true },
         ];
@@ -231,6 +374,7 @@
       if (type === 'geotiff') {
         return new ol.layer.WebGLTile({ visible, source: new ol.source.GeoTIFF({ sources: [{ url }], attributions: attributionText || '' }) });
       }
+      console.warn('Unknown layer type:', type);
       return null;
     }
 
@@ -251,40 +395,71 @@
     }
 
     function applyLayers() {
+      // Remove previous non-feature layers
       map.getLayers().getArray().slice().forEach((lyr) => { if (lyr !== featureLayer) map.removeLayer(lyr); });
       state.layersById.clear();
       state.layersConfig.forEach((cfg) => {
         const layer = buildLayer(cfg);
         if (layer) {
-          map.getLayers().insertAt(map.getLayers().getLength()-0, layer);
+          map.getLayers().insertAt(map.getLayers().getLength()-0, layer); // keep featureLayer on top
           state.layersById.set(cfg.id, layer);
         }
       });
       renderLayerToggles();
     }
 
-    const select = new ol.interaction.Select();
-    const modify = new ol.interaction.Modify({ features: select.getFeatures() });
-    map.addInteraction(select);
-    map.addInteraction(modify);
-
-    function resyncFeaturesFromSource() {
-        const fmt = new ol.format.GeoJSON();
-        state.features = fmt.writeFeaturesObject(
-            featureSource.getFeatures(),
-            { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' }
-        );
-        syncFeatureButtons();
-    }
-
-    modify.on('modifyend', resyncFeaturesFromSource);
-    featureSource.on('removefeature', resyncFeaturesFromSource);
-
     (async function init() {
       await loadManifest();
       applyLayers();
       setFeaturesFromGeoJSON({ type: 'FeatureCollection', features: [] });
     })();
+
+    // ---- Nominatim search ----------------------------------------------------
+    const searchInput = document.getElementById('searchBox');
+    const searchResults = document.getElementById('searchResults');
+
+    function debounce(fn, ms) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; }
+
+    async function geocode(q) {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=6&q=${encodeURIComponent(q)}`;
+      const res = await fetch(url, { headers: { 'Accept-Language': navigator.language || 'en' } });
+      if (!res.ok) throw new Error('Geocoding failed');
+      return res.json();
+    }
+
+    function showResults(items) {
+      searchResults.innerHTML = '';
+      if (!items || !items.length) { searchResults.style.display = 'none'; return; }
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.textContent = item.display_name;
+        div.onclick = () => {
+          const lat = parseFloat(item.lat), lon = parseFloat(item.lon);
+          flyTo(lat, lon, 15);
+          searchResults.style.display = 'none';
+        };
+        searchResults.appendChild(div);
+      });
+      searchResults.style.display = 'block';
+    }
+
+    const doSearch = debounce(async () => {
+      const q = searchInput.value.trim();
+      if (q.length < 3) { searchResults.style.display = 'none'; return; }
+      try { showResults(await geocode(q)); } catch (e) { console.warn(e); searchResults.style.display = 'none'; }
+    }, 400);
+
+    searchInput.addEventListener('input', doSearch);
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('searchPanel').contains(e.target)) searchResults.style.display = 'none';
+    });
+
+    // Optional: expose a helper to fly to a lat/lon
+    function flyTo(lat, lon, zoom = 13) {
+      map.getView().animate({ zoom: 7, duration: 250 }, { center: ol.proj.fromLonLat([lon, lat]), duration: 650 }, { zoom, duration: 300 });
+    }
+    window.flyTo = flyTo;
   </script>
 </body>
 </html>

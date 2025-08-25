@@ -85,8 +85,6 @@ const FeatureManager = ({ map, featuresGeoJSON, onFeatureClick }) => {
           feature.set('featureId', originalFeature.properties.id);
           feature.set('properties', originalFeature.properties);
           // Don't store the raw geometry object - OpenLayers will handle geometry internally
-
-          // feature.getStyle().getText().text = originalFeature.properties.label;
         }
       });
 

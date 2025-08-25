@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { createEmptyGeoJSON } from './markerUtils';
-import './MarkerControls.css';
+import { createEmptyGeoJSON } from './featureUtils';
+import './FeatureControls.css';
 
-const MarkerControls = ({ featuresGeoJSON, onFeaturesChange, onAddMarkerClick }) => {
+const FeatureControls = ({ featuresGeoJSON, onFeaturesChange, onAddFeatureClick }) => {
   const [showControls, setShowControls] = useState(false);
 
   const handleSaveToFile = () => {
@@ -49,9 +49,9 @@ const MarkerControls = ({ featuresGeoJSON, onFeaturesChange, onAddMarkerClick })
   };
 
   return (
-    <div className="marker-controls">
+    <div className="feature-controls">
       <button 
-        className="marker-controls-toggle"
+        className="feature-controls-toggle"
         onClick={() => setShowControls(!showControls)}
         title="Feature Controls"
       >
@@ -59,19 +59,19 @@ const MarkerControls = ({ featuresGeoJSON, onFeaturesChange, onAddMarkerClick })
       </button>
       
       {showControls && (
-        <div className="marker-controls-panel">
-          <div className="marker-controls-header">
+        <div className="feature-controls-panel">
+          <div className="feature-controls-header">
             <h4>Map Features</h4>
-            <span className="marker-count">{featuresGeoJSON.features.length} features</span>
+            <span className="feature-count">{featuresGeoJSON.features.length} features</span>
           </div>
           
-          <div className="marker-controls-actions">
+          <div className="feature-controls-actions">
             <button 
               className="btn btn-primary"
-              onClick={onAddMarkerClick}
-              title="Click on the map to add a marker at that location"
+              onClick={onAddFeatureClick}
+              title="Click on the map to add a feature at that location"
             >
-              + Add Marker
+              + Add Feature
             </button>
             
             <div className="file-actions">
@@ -104,8 +104,8 @@ const MarkerControls = ({ featuresGeoJSON, onFeaturesChange, onAddMarkerClick })
           </div>
           
           {featuresGeoJSON.features.length > 0 && (
-            <div className="marker-summary">
-              <div className="marker-type-counts">
+            <div className="feature-summary">
+              <div className="feature-type-counts">
                 <div>🪸 Coral Tables: {featuresGeoJSON.features.filter(f => f.properties.type === 'coral_table').length}</div>
                 <div>🐠 Natural: {featuresGeoJSON.features.filter(f => f.properties.type === 'natural_feature').length}</div>
                 <div>📊 Monitoring: {featuresGeoJSON.features.filter(f => f.properties.type === 'monitoring_point').length}</div>
@@ -119,4 +119,4 @@ const MarkerControls = ({ featuresGeoJSON, onFeaturesChange, onAddMarkerClick })
   );
 };
 
-export default MarkerControls;
+export default FeatureControls;

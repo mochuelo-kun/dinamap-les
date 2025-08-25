@@ -13,8 +13,9 @@ import Point from 'ol/geom/Point';
 import { Style, Text, Fill, Stroke } from 'ol/style';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { ScaleLine, defaults as defaultControls } from 'ol/control';
-import FeatureManager from './MarkerManager';
 import 'ol/ol.css';
+
+import FeatureManager from './FeatureManager';
 import './Map.css';
 import {
   LAYER_TYPE_OSM,
@@ -41,7 +42,7 @@ const MapComponent = ({
   searchCoordinates,
   featuresGeoJSON,
   onFeatureClick,
-  addMarkerMode
+  addFeatureMode
 }) => {
   const mapRef = useRef();
   const [map, setMap] = useState(null);
@@ -106,6 +107,8 @@ const MapComponent = ({
       ]),
     });
 
+    console.log(olMap.getLayers());
+
 
     setMap(olMap);
     setCoordinateMarkerLayer(coordinateMarkerLayerInstance);
@@ -123,14 +126,14 @@ const MapComponent = ({
   useEffect(() => {
     if (!map || !coordinateMarkerLayer) return;
 
-    const source = coordinateMarkerLayer.getSource();
-    source.clear();
+    const coordinateMarkerLayerSource = coordinateMarkerLayer.getSource();
+    coordinateMarkerLayerSource.clear();
 
     if (clickCoordinates) {
-      const marker = new Feature({
+      const coordinateMarker = new Feature({
         geometry: new Point(fromLonLat([clickCoordinates.lng, clickCoordinates.lat])),
       });
-      source.addFeature(marker);
+      coordinateMarkerLayerSource.addFeature(coordinateMarker);
     }
   }, [clickCoordinates, map, coordinateMarkerLayer]);
 
@@ -166,7 +169,7 @@ const MapComponent = ({
         return feature.get('featureId') ? feature : null;
       });
 
-      if (feature && onFeatureClick && !addMarkerMode) {
+      if (feature && onFeatureClick && !addFeatureMode) {
         // Find the original GeoJSON feature from the data
         const featureId = feature.get('featureId');
         const originalFeature = featuresGeoJSON.features.find(f => f.properties.id === featureId);
@@ -190,7 +193,7 @@ const MapComponent = ({
     return () => {
       map.un('singleclick', handleMapClick);
     };
-  }, [map, onCoordinateClick, onFeatureClick, addMarkerMode, featuresGeoJSON]);
+  }, [map, onCoordinateClick, onFeatureClick, addFeatureMode, featuresGeoJSON]);
 
   return (
     <>
@@ -198,7 +201,7 @@ const MapComponent = ({
         style={{ 
           height: '100vh', 
           width: '100%',
-          cursor: addMarkerMode ? 'crosshair' : 'default'
+          cursor: addFeatureMode ? 'crosshair' : 'default'
         }} 
         ref={mapRef}
       />

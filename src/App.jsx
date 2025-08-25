@@ -4,15 +4,15 @@ import MapComponent from './Map';
 import LayerToggle from './LayerToggle';
 import CoordinateDisplay from './CoordinateDisplay';
 import SearchBar from './SearchBar';
-import MarkerControls from './MarkerControls';
-import MarkerForm from './MarkerForm';
+import FeatureControls from './FeatureControls';
+import FeatureForm from './FeatureForm';
 import './App.css';
 import { getLatestLayerConfig } from './layerConfigService';
 import {
   SEGARA_LESTARI_HOME_LONLAT_COORDS,
   SEGARA_LESTARI_HOME_ZOOM,
 } from './mapConfig';
-import { createEmptyGeoJSON, addFeatureToGeoJSON, updateFeatureInGeoJSON, removeFeatureFromGeoJSON } from './markerUtils';
+import { createEmptyGeoJSON, addFeatureToGeoJSON, updateFeatureInGeoJSON, removeFeatureFromGeoJSON } from './featureUtils';
 
 const lookupAddress = async (address) => {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
@@ -37,9 +37,9 @@ function App() {
   const [clickCoordinates, setCoordinates] = useState(null); // For click on map
   const [searchCoordinates, setSearchCoordinates] = useState(null); // For search input
   const [featuresGeoJSON, setFeaturesGeoJSON] = useState(createEmptyGeoJSON());
-  const [showMarkerForm, setShowMarkerForm] = useState(false);
-  const [editingMarker, setEditingMarker] = useState(null);
-  const [addMarkerMode, setAddMarkerMode] = useState(false);
+  const [showFeatureForm, setShowFeatureForm] = useState(false);
+  const [editingFeature, setEditingFeature] = useState(null);
+  const [addFeatureMode, setAddFeatureMode] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -58,8 +58,8 @@ function App() {
 
   const handleCoordinateClick = (coords) => {
     setCoordinates(coords);
-    if (addMarkerMode) {
-      setShowMarkerForm(true);
+    if (addFeatureMode) {
+      setShowFeatureForm(true);
     }
   };
 
@@ -68,17 +68,17 @@ function App() {
   };
 
   const handleFeatureClick = (feature) => {
-    setEditingMarker(feature);
-    setShowMarkerForm(true);
+    setEditingFeature(feature);
+    setShowFeatureForm(true);
   };
 
-  const handleAddMarkerClick = () => {
-    setAddMarkerMode(true);
+  const handleAddFeatureClick = () => {
+    setAddFeatureMode(true);
     setCoordinates(null);
   };
 
   const handleFeatureSave = (feature) => {
-    if (editingMarker) {
+    if (editingFeature) {
       setFeaturesGeoJSON(prev => updateFeatureInGeoJSON(prev, feature.properties.id, feature));
     } else {
       setFeaturesGeoJSON(prev => addFeatureToGeoJSON(prev, feature));
@@ -89,10 +89,10 @@ function App() {
     setFeaturesGeoJSON(prev => removeFeatureFromGeoJSON(prev, featureId));
   };
 
-  const handleMarkerFormClose = () => {
-    setShowMarkerForm(false);
-    setEditingMarker(null);
-    setAddMarkerMode(false);
+  const handleFeatureFormClose = () => {
+    setShowFeatureForm(false);
+    setEditingFeature(null);
+    setAddFeatureMode(false);
   };
 
   const debouncedAddressSearch = debounce(async (query) => {
@@ -121,7 +121,7 @@ function App() {
         searchCoordinates={searchCoordinates}
         featuresGeoJSON={featuresGeoJSON}
         onFeatureClick={handleFeatureClick}
-        addMarkerMode={addMarkerMode}
+        addFeatureMode={addFeatureMode}
       />
       <LayerToggle
         layers={layers}
@@ -132,18 +132,18 @@ function App() {
         onClear={handleClearCoordinates}
       />
       <SearchBar onSearch={handleAddressSearch} />
-      <MarkerControls
+      <FeatureControls
         featuresGeoJSON={featuresGeoJSON}
         onFeaturesChange={setFeaturesGeoJSON}
-        onAddMarkerClick={handleAddMarkerClick}
+        onAddFeatureClick={handleAddFeatureClick}
       />
-      <MarkerForm
-        isOpen={showMarkerForm}
-        onClose={handleMarkerFormClose}
+      <FeatureForm
+        isOpen={showFeatureForm}
+        onClose={handleFeatureFormClose}
         onSave={handleFeatureSave}
         onDelete={handleFeatureDelete}
-        editingFeature={editingMarker}
-        clickCoordinates={addMarkerMode ? clickCoordinates : null}
+        editingFeature={editingFeature}
+        clickCoordinates={addFeatureMode ? clickCoordinates : null}
       />
     </div>
   );

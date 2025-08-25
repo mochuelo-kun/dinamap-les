@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MARKER_TYPES, createFeature } from './markerUtils';
-import './MarkerForm.css';
+import { MARKER_TYPES, createFeature } from './featureUtils';
+import './FeatureForm.css';
 
-const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingFeature, clickCoordinates }) => {
+const FeatureForm = ({ isOpen, onClose, onSave, onDelete, editingFeature, clickCoordinates }) => {
   const [formData, setFormData] = useState({
     type: MARKER_TYPES.CORAL_TABLE,
     label: '',
@@ -88,20 +88,20 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingFeature, clickCo
   if (!isOpen) return null;
 
   return (
-    <div className="marker-form-overlay">
-      <div className="marker-form-container">
-        <div className="marker-form-header">
+    <div className="feature-form-overlay">
+      <div className="feature-form-container">
+        <div className="feature-form-header">
           <h3>{editingFeature ? 'Edit Feature' : 'Add New Feature'}</h3>
           <button 
             type="button" 
-            className="marker-form-close"
+            className="feature-form-close"
             onClick={handleClose}
           >
             ✕
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="marker-form">
+        <form onSubmit={handleSubmit} className="feature-form">
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="type">Type:</label>
@@ -129,7 +129,7 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingFeature, clickCo
                 name="label"
                 value={formData.label}
                 onChange={handleInputChange}
-                placeholder="Brief label for the marker"
+                placeholder="Brief label for the feature"
                 maxLength={50}
               />
             </div>
@@ -226,4 +226,4 @@ const MarkerForm = ({ isOpen, onClose, onSave, onDelete, editingFeature, clickCo
   );
 };
 
-export default MarkerForm;
+export default FeatureForm;

@@ -1,11 +1,11 @@
-.marker-controls {
+.feature-controls {
   position: fixed;
   top: 120px;
   left: 10px;
   z-index: 1000;
 }
 
-.marker-controls-toggle {
+.feature-controls-toggle {
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -19,11 +19,11 @@
   gap: 5px;
 }
 
-.marker-controls-toggle:hover {
+.feature-controls-toggle:hover {
   background: white;
 }
 
-.marker-controls-panel {
+.feature-controls-panel {
   position: absolute;
   top: 45px;
   left: 0;
@@ -36,7 +36,7 @@
   backdrop-filter: blur(10px);
 }
 
-.marker-controls-header {
+.feature-controls-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -45,13 +45,13 @@
   border-bottom: 1px solid #e0e0e0;
 }
 
-.marker-controls-header h4 {
+.feature-controls-header h4 {
   margin: 0;
   color: #333;
   font-size: 1.1em;
 }
 
-.marker-count {
+.feature-count {
   font-size: 0.9em;
   color: #666;
   background: #f8f9fa;
@@ -59,7 +59,7 @@
   border-radius: 12px;
 }
 
-.marker-controls-actions {
+.feature-controls-actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -128,13 +128,13 @@
   pointer-events: none;
 }
 
-.marker-summary {
+.feature-summary {
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid #e0e0e0;
 }
 
-.marker-type-counts {
+.feature-type-counts {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -142,18 +142,18 @@
   color: #666;
 }
 
-.marker-type-counts div {
+.feature-type-counts div {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 @media (max-width: 600px) {
-  .marker-controls {
+  .feature-controls {
     top: 80px;
   }
   
-  .marker-controls-panel {
+  .feature-controls-panel {
     min-width: 260px;
     left: -10px;
   }
@@ -162,7 +162,7 @@
     flex-direction: column;
   }
   
-  .marker-type-counts {
+  .feature-type-counts {
     grid-template-columns: 1fr;
   }
 }

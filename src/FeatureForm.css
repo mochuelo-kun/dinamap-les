@@ -1,4 +1,4 @@
-.marker-form-overlay {
+.feature-form-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -11,7 +11,7 @@
   z-index: 10000;
 }
 
-.marker-form-container {
+.feature-form-container {
   background: white;
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
@@ -21,7 +21,7 @@
   overflow-y: auto;
 }
 
-.marker-form-header {
+.feature-form-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -29,13 +29,13 @@
   border-bottom: 1px solid #e0e0e0;
 }
 
-.marker-form-header h3 {
+.feature-form-header h3 {
   margin: 0;
   color: #333;
   font-size: 1.4em;
 }
 
-.marker-form-close {
+.feature-form-close {
   background: none;
   border: none;
   font-size: 1.5em;
@@ -51,11 +51,11 @@
   transition: background-color 0.2s;
 }
 
-.marker-form-close:hover {
+.feature-form-close:hover {
   background-color: #f0f0f0;
 }
 
-.marker-form {
+.feature-form {
   padding: 20px;
 }
 
@@ -154,7 +154,7 @@
 }
 
 @media (max-width: 600px) {
-  .marker-form-container {
+  .feature-form-container {
     width: 95%;
     margin: 10px;
   }

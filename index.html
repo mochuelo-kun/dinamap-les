@@ -21,6 +21,11 @@
   - Change title
   - Fix minor bugs: explicitly load GeoTIFF lib before OL, var cleanup
 
+#### 0.1.3 (GPT 5)
+  - First pass at moving some features to a collapsible side menu
+  - Support LineStrings in draw mode
+  - Starting to treat select|modify|draw and point|linestring|polygon as separate button groups
+
 -->
 
 <!doctype html>
@@ -51,7 +56,18 @@
     /* Avoid overlapping OL controls; add active button styling */
     #featuresPanel { top: 4.5rem; }
     .panel button.active { background: #222; color: #fff; border-color: #222; }
-    #coord { min-width: 260px; }
+    #info { min-width: 260px; }
+    .hidden { display: none; }
+    .menu-btn { position: absolute; top: .75rem; right: .75rem; z-index: 1102; background: #fff; border: 1px solid #bbb; border-radius: 999px; padding: 8px 10px; cursor: pointer; }
+    .menu-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.2); z-index: 1100; }
+    .menu-sheet { position: absolute; top: 0; right: 0; height: 100%; width: min(380px, 92%); background: rgba(255,255,255,0.98); border-left: 1px solid #ccc; box-shadow: -8px 0 24px rgba(0,0,0,0.12); z-index: 1101; overflow: auto; }
+    .menu-header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .75rem; border-bottom: 1px solid #eee; }
+    .menu-close { border: 1px solid #bbb; background: #fff; border-radius: 6px; cursor: pointer; padding: 2px 8px; }
+    .menu-content { padding: .75rem; }
+    .menu-sheet details { border: 1px solid #e5e5e5; border-radius: 8px; padding: .5rem .5rem .75rem; margin-bottom: .5rem; background: #fff; }
+    .menu-sheet summary { font-weight: 600; cursor: pointer; list-style: none; }
+    .menu-sheet summary::-webkit-details-marker { display: none; }
+    .search-group { position: relative; }
 
     /* Search bar */
     #searchPanel { position: absolute; left: 50%; top: .75rem; transform: translateX(-50%); width: min(720px, calc(100% - 1.5rem)); z-index: 1001; }
@@ -61,8 +77,8 @@
     #searchResults .item:last-child { border-bottom: 0; }
     #searchResults .item:hover { background: #f3f3f3; }
 
-    /* Tiny coordinate readout */
-    #coord { position: absolute; left: .75rem; bottom: .75rem; padding: 6px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: rgba(255,255,255,0.9); border-radius: 6px; border: 1px solid #ccc; z-index: 1000; }
+    /* Selected feature or location readout */
+    #info { position: absolute; left: .75rem; bottom: .75rem; padding: 6px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: rgba(255,255,255,0.9); border-radius: 6px; border: 1px solid #ccc; z-index: 1000; }
 
     @media (max-width: 640px) {
       #layersPanel, #featuresPanel { min-width: unset; width: calc(100% - 1.5rem); }
@@ -70,50 +86,85 @@
       #featuresPanel { top: .75rem; left: .75rem; }
       #searchPanel { left: .75rem; right: .75rem; transform: none; width: calc(100% - 1.5rem); }
     }
+  #modeBar { position:absolute; left:50%; top:.75rem; transform:translateX(-50%); z-index:1102; display:flex; gap:6px; background: rgba(255,255,255,0.95); border:1px solid #ccc; border-radius:999px; padding:4px; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+    #modeBar button { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 999px; cursor: pointer; font-size: 13px; }
+    #modeBar button.active { background:#222; color:#fff; border-color:#222; }
+  #drawPop { position:absolute; top:3.25rem; left:50%; transform:translateX(-50%); z-index:1103; display:flex; gap:6px; background: rgba(255,255,255,0.98); border:1px solid #ccc; border-radius:12px; padding:6px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
+    #drawPop button { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
   </style>
 </head>
 <body>
   <div id="app">
     <div id="map"></div>
 
-    <!-- Search (Nominatim) -->
-    <div id="searchPanel">
-      <input id="searchBox" type="search" placeholder="Search places (Nominatim)…" autocomplete="off" />
-      <div id="searchResults"></div>
+    <div id="modeBar" role="toolbar" aria-label="Mode">
+      <button id="modeSelectTop" class="active" title="Select">☝️ Select</button>
+      <button id="modeEditTop" title="Edit">✏️ Edit</button>
+      <button id="modeDrawTop" title="Draw">✚ Draw</button>
+    </div>
+    <div id="drawPop" class="hidden">
+      <button id="drawPointTop">• Point</button>
+      <button id="drawLineTop">— Line</button>
+      <button id="drawPolyTop">▰ Polygon</button>
     </div>
 
-    <!-- Layers / toggles built from a manifest.json (COGs + basemap) -->
-    <div id="layersPanel" class="panel">
-      <h3>Layers</h3>
-      <div id="layers"></div>
-    </div>
-
-    <!-- GeoJSON I/O + drawing toolbar -->
-    <div id="featuresPanel" class="panel">
-      <h3>Features</h3>
-      <div class="row" style="gap:6px; flex-wrap:wrap">
-        <button id="selectMode" title="Browse/Select">☝️ Select</button>
-        <button id="modifyMode" title="Edit geometry">✏️ Modify</button>
-        <button id="drawPoint">• Point</button>
-        <button id="drawLine">— Line</button>
-        <button id="drawPoly">▰ Polygon</button>
-        <button id="stopDraw" title="Stop drawing / disable interactions">⏹ Stop</button>
-        <button id="deleteSelected" disabled>🗑️ Delete selected</button>
+    <button id="menuToggle" class="menu-btn" aria-label="Open menu">☰</button>
+    <div id="menuBackdrop" class="menu-backdrop hidden"></div>
+    <aside id="menuSheet" class="menu-sheet hidden" aria-label="Tools">
+      <header class="menu-header">
+        <div>Tools</div>
+        <button id="menuClose" class="menu-close" aria-label="Close">×</button>
+      </header>
+      <div class="menu-content">
+        <details id="sec-select" open>
+          <summary>Select</summary>
+          <div class="row" style="gap:6px; flex-wrap:wrap; margin-top:.5rem;">
+            <button id="selectMode" title="Browse/Select">☝️ Select</button>
+            <button id="modifyMode" title="Edit geometry">✏️ Modify</button>
+            <button id="deleteSelected" disabled>🗑️ Delete selected</button>
+          </div>
+        </details>
+        <details id="sec-edit">
+          <summary>Add / Edit Feature</summary>
+          <div id="drawTools" class="row" style="gap:6px; flex-wrap:wrap; margin-top:.5rem;">
+            <button id="drawPoint">• Point</button>
+            <button id="drawLine">— Line</button>
+            <button id="drawPoly">▰ Polygon</button>
+            <button id="stopDraw" title="Stop drawing / disable interactions">⏹ Stop</button>
+          </div>
+        </details>
+        <details id="sec-io">
+          <summary>Load / Save</summary>
+          <div class="row" style="gap:6px; flex-wrap:wrap; margin-top:.5rem;">
+            <button id="saveGeojson" disabled>💾 Save GeoJSON</button>
+            <label class="btn" for="fileGeojson">📁 Load GeoJSON</label>
+            <input id="fileGeojson" type="file" accept=".geojson,.json" />
+            <button id="clearGeojson" disabled>🧹 Clear all</button>
+          </div>
+        </details>
+        <details id="sec-search">
+          <summary>Search / Fly-to</summary>
+          <div class="search-group" style="margin-top:.5rem;">
+            <input id="searchBox" type="search" placeholder="Search places (Nominatim)…" autocomplete="off" style="width:100%; box-sizing:border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid #bbb; background: rgba(255,255,255,0.98); font-size: 14px;" />
+            <div id="searchResults"></div>
+          </div>
+        </details>
+        <details id="sec-layers" open>
+          <summary>Layers</summary>
+          <div id="layers" style="margin-top:.5rem;"></div>
+        </details>
       </div>
-      <div class="row">
-        <button id="saveGeojson" disabled>💾 Save GeoJSON</button>
-        <label class="btn" for="fileGeojson">📁 Load GeoJSON</label>
-        <input id="fileGeojson" type="file" accept=".geojson,.json" />
-        <button id="clearGeojson" disabled>🧹 Clear all</button>
-      </div>
-    </div>
+    </aside>
 
-    <div id="coord" class="panel" style="left:.75rem; bottom:.75rem; display:none; padding:.5rem .75rem;">
+    <!-- removed in favor of unified Tools menu -->
+    <!-- removed in favor of unified Tools menu -->
+
+    <div id="info" class="panel" style="left:.75rem; bottom:.75rem; display:none; padding:.5rem .75rem;">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;">
         <strong>Info</strong>
-        <button id="coordClose" title="Close" style="border:1px solid #bbb;background:#fff;border-radius:6px;cursor:pointer;padding:2px 6px;">×</button>
+        <button id="infoClose" title="Close" style="border:1px solid #bbb;background:#fff;border-radius:6px;cursor:pointer;padding:2px 6px;">×</button>
       </div>
-      <div id="coordBody" style="margin-top:.5rem;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;"></div>
+      <div id="infoBody" style="margin-top:.5rem;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;"></div>
     </div>
   </div>
 
@@ -140,10 +191,10 @@
     });
 
     // Coordinate/feature info on click (mobile-friendly)
-    const infoEl = document.getElementById('coord');
-    const infoBody = document.getElementById('coordBody');
-    const coordClose = document.getElementById('coordClose');
-    coordClose.addEventListener('click', () => { infoEl.style.display = 'none'; tempSource && tempSource.clear(); });
+    const infoEl = document.getElementById('info');
+    const infoBody = document.getElementById('infoBody');
+    const infoClose = document.getElementById('infoClose');
+    infoClose.addEventListener('click', () => { infoEl.style.display = 'none'; tempSource && tempSource.clear(); });
 
     function fmtLatLon(coord3857) {
       const [lon, lat] = ol.proj.toLonLat(coord3857);
@@ -206,16 +257,10 @@
     const tempSource = new ol.source.Vector();
     const tempLayer = new ol.layer.Vector({
       source: tempSource,
-    //   style: new ol.style.Style({
-    //     image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: '#ffff00' }), stroke: new ol.style.Stroke({ color: '#000', width: 2 }) })
-    //   }),
       style: new ol.style.Style({
-        text: new ol.style.Text({ text: '⌖', font: 'bold 24px sans-serif',
-        fill: new ol.style.Fill({ color: '#ffffff' }),
-        stroke: new ol.style.Stroke({ color: '#fffff', width: 3 }) })
+        image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: '#ffff00' }), stroke: new ol.style.Stroke({ color: '#000', width: 2 }) })
       }),
       zIndex: 1100,
-    //   zIndex: 9000,
     });
     map.addLayer(tempLayer);
     map.addInteraction(selectInteraction);
@@ -244,6 +289,8 @@
     };
 
     let drawInteraction = null;
+    const drawToolsEl = document.getElementById('drawTools');
+    function showDrawTools(show) { drawToolsEl.style.display = show ? 'flex' : 'none'; }
     function startDraw(type) {
       if (drawInteraction) map.removeInteraction(drawInteraction);
       drawInteraction = new ol.interaction.Draw({ source: featureSource, type });
@@ -259,7 +306,9 @@
       selectInteraction.setActive(isBrowse || isModify);
       modifyInteraction.setActive(isModify);
       stopDraw();
-      if (mode.startsWith('draw:')) startDraw(mode.split(':')[1]);
+      const isDraw = mode.startsWith('draw:');
+      showDrawTools(isDraw);
+      if (isDraw) startDraw(mode.split(':')[1]);
 
       // UI states
       Object.values(btns).forEach(b => b && b.classList.remove('active'));
@@ -268,15 +317,43 @@
       if (mode === 'draw:Point') btns.drawPoint.classList.add('active');
       if (mode === 'draw:LineString') btns.drawLine.classList.add('active');
       if (mode === 'draw:Polygon') btns.drawPoly.classList.add('active');
-      updateDeleteBtn && updateDeleteBtn();
+      updateDeleteBtn && updateDeleteBtn(); syncTopMode && syncTopMode();
     }
 
     btns.select.onclick = () => setMode('browse');
     btns.modify.onclick = () => setMode('modify');
-    btns.drawPoint.onclick = () => setMode('draw:Point');
+        btns.drawPoint.onclick = () => setMode('draw:Point');
     btns.drawLine.onclick = () => setMode('draw:LineString');
     btns.drawPoly.onclick = () => setMode('draw:Polygon');
     btns.stop.onclick = () => setMode('browse');
+
+    const modeSelectTop = document.getElementById('modeSelectTop');
+    const modeEditTop = document.getElementById('modeEditTop');
+    modeSelectTop.onclick = () => setMode('browse');
+    modeEditTop.onclick = () => setMode('modify');
+    const modeDrawTop = document.getElementById('modeDrawTop');
+    const drawPop = document.getElementById('drawPop');
+    const drawPointTop = document.getElementById('drawPointTop');
+    const drawLineTop = document.getElementById('drawLineTop');
+    const drawPolyTop = document.getElementById('drawPolyTop');
+    function closeDrawPop(){ drawPop.classList.add('hidden'); }
+    function toggleDrawPop(){ drawPop.classList.toggle('hidden'); }
+    modeDrawTop.onclick = () => toggleDrawPop();
+    drawPointTop.onclick = () => { setMode('draw:Point'); closeDrawPop(); };
+    drawLineTop.onclick = () => { setMode('draw:LineString'); closeDrawPop(); };
+    drawPolyTop.onclick = () => { setMode('draw:Polygon'); closeDrawPop(); };
+    document.addEventListener('click', (e) => {
+      const inBar = document.getElementById('modeBar').contains(e.target);
+      const inPop = drawPop.contains(e.target);
+      if (!inBar && !inPop) closeDrawPop();
+    });
+    function syncTopMode(){
+      modeSelectTop.classList.toggle('active', mode === 'browse');
+      const isDraw = (typeof mode === 'string' && mode.startsWith('draw:'));
+      modeEditTop.classList.toggle('active', mode === 'modify');
+      const modeDrawTopEl = document.getElementById('modeDrawTop');
+      if (modeDrawTopEl) modeDrawTopEl.classList.toggle('active', isDraw);
+    }
 
     // Delete selected features
     const deleteBtn = document.getElementById('deleteSelected');
@@ -396,7 +473,7 @@
 
     function applyLayers() {
       // Remove previous non-feature layers
-      map.getLayers().getArray().slice().forEach((lyr) => { if (lyr !== featureLayer) map.removeLayer(lyr); });
+      map.getLayers().getArray().slice().forEach((lyr) => { if (lyr !== featureLayer && lyr !== tempLayer) map.removeLayer(lyr); });
       state.layersById.clear();
       state.layersConfig.forEach((cfg) => {
         const layer = buildLayer(cfg);
@@ -452,7 +529,7 @@
 
     searchInput.addEventListener('input', doSearch);
     document.addEventListener('click', (e) => {
-      if (!document.getElementById('searchPanel').contains(e.target)) searchResults.style.display = 'none';
+      if (!document.getElementById('sec-search').contains(e.target)) searchResults.style.display = 'none';
     });
 
     // Optional: expose a helper to fly to a lat/lon
@@ -460,6 +537,17 @@
       map.getView().animate({ zoom: 7, duration: 250 }, { center: ol.proj.fromLonLat([lon, lat]), duration: 650 }, { zoom, duration: 300 });
     }
     window.flyTo = flyTo;
+
+    const menuToggle = document.getElementById('menuToggle');
+    const menuBackdrop = document.getElementById('menuBackdrop');
+    const menuSheet = document.getElementById('menuSheet');
+    const menuClose = document.getElementById('menuClose');
+    function openMenu(){ menuSheet.classList.remove('hidden'); menuBackdrop.classList.remove('hidden'); }
+    function closeMenu(){ menuSheet.classList.add('hidden'); menuBackdrop.classList.add('hidden'); }
+    if (menuToggle) menuToggle.addEventListener('click', ()=>{ menuSheet.classList.contains('hidden') ? openMenu() : closeMenu(); });
+    if (menuClose) menuClose.addEventListener('click', closeMenu);
+    if (menuBackdrop) menuBackdrop.addEventListener('click', closeMenu);
+    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeMenu(); });
   </script>
 </body>
 </html>

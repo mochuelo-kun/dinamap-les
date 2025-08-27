@@ -124,23 +124,6 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
       </div>
       <div class="offcanvas-body">
-        <details id="sec-select" open>
-          <summary>Select</summary>
-          <div class="row g-2 mt-2">
-            <div class="col-auto"><button id="selectMode" class="btn btn-outline-secondary">☝️ Select</button></div>
-            <div class="col-auto"><button id="modifyMode" class="btn btn-outline-secondary">✏️ Modify</button></div>
-            <div class="col-auto"><button id="deleteSelected" class="btn btn-outline-danger" disabled>🗑️ Delete selected</button></div>
-          </div>
-        </details>
-        <details id="sec-edit">
-          <summary>Add / Edit Feature</summary>
-          <div id="drawTools" class="row g-2 mt-2">
-            <div class="col-auto"><button id="drawPoint" class="btn btn-outline-secondary">• Point</button></div>
-            <div class="col-auto"><button id="drawLine" class="btn btn-outline-secondary">— Line</button></div>
-            <div class="col-auto"><button id="drawPoly" class="btn btn-outline-secondary">▰ Polygon</button></div>
-            <div class="col-auto"><button id="stopDraw" class="btn btn-outline-secondary">⏹ Stop</button></div>
-          </div>
-        </details>
         <details id="sec-io">
           <summary>Load / Save</summary>
           <div class="row g-2 mt-2">
@@ -221,9 +204,10 @@
       const hit = map.forEachFeatureAtPixel(evt.pixel, f => f, { layerFilter: l => l === featureLayer });
       tempSource.clear();
       let html = '';
+      const isSelectMode = mode === 'browse';
+      if (!isSelectMode) return;
       if (hit) {
         const center = featureCenter(hit);
-        tempSource.addFeature(new ol.Feature(new ol.geom.Point(center)));
         const props = { ...hit.getProperties() }; delete props.geometry;
         const propsHtml = Object.keys(props).length
           ? Object.entries(props).map(([k,v]) => `<div><b>${k}</b>: ${String(v)}</div>`).join('')
@@ -251,6 +235,13 @@
         const geom = feat.getGeometry();
         if (geom.getType() === 'Point') {
           return new ol.style.Style({
+            image: new ol.style.Circle({
+              radius: 6,
+              fill: new ol.style.Fill({ color: '#ffffff' }),
+              stroke: new ol.style.Stroke({ color: '#000', width: 2 }),
+            }),
+          });
+          new ol.style.Style({
             text: new ol.style.Text({ text: '⌖', font: 'bold 24px sans-serif',
               fill: new ol.style.Fill({ color: '#ffff00' }), stroke: new ol.style.Stroke({ color: '#000', width: 3 }) })
           });
@@ -265,9 +256,6 @@
     const tempSource = new ol.source.Vector();
     const tempLayer = new ol.layer.Vector({
       source: tempSource,
-    //   style: new ol.style.Style({
-    //     image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: '#ffff00' }), stroke: new ol.style.Stroke({ color: '#000', width: 2 }) })
-    //   }),
       style: new ol.style.Style({
         text: new ol.style.Text({
           text: '⌖',
@@ -295,18 +283,9 @@
 
     // Mode + drawing controls
     let mode = 'browse';
-    const btns = {
-      select: document.getElementById('selectMode'),
-      modify: document.getElementById('modifyMode'),
-      drawPoint: document.getElementById('drawPoint'),
-      drawLine: document.getElementById('drawLine'),
-      drawPoly: document.getElementById('drawPoly'),
-      stop: document.getElementById('stopDraw'),
-    };
+    // consolidated: modes handled by top radio group only
 
     let drawInteraction = null;
-    const drawToolsEl = document.getElementById('drawTools');
-    function showDrawTools(show) { drawToolsEl.style.display = show ? 'flex' : 'none'; }
     function startDraw(type) {
       if (drawInteraction) map.removeInteraction(drawInteraction);
       drawInteraction = new ol.interaction.Draw({ source: featureSource, type });
@@ -317,31 +296,17 @@
 
     function setMode(next) {
       mode = next;
-      const isBrowse = mode === 'browse';
       const isModify = mode === 'modify';
-      selectInteraction.setActive(isBrowse || isModify);
+      const isDraw = typeof mode === 'string' && mode.startsWith('draw:');
+      selectInteraction.setActive(!isDraw || isModify);
       modifyInteraction.setActive(isModify);
       stopDraw();
-      const isDraw = mode.startsWith('draw:');
-      showDrawTools(isDraw);
       if (isDraw) startDraw(mode.split(':')[1]);
-
-      // UI states
-      Object.values(btns).forEach(b => b && b.classList.remove('active'));
-      if (isBrowse) btns.select && btns.select.classList.add('active');
-      if (isModify) btns.modify && btns.modify.classList.add('active');
-      if (mode === 'draw:Point') btns.drawPoint.classList.add('active');
-      if (mode === 'draw:LineString') btns.drawLine.classList.add('active');
-      if (mode === 'draw:Polygon') btns.drawPoly.classList.add('active');
-      updateDeleteBtn && updateDeleteBtn(); syncTopMode && syncTopMode();
+      if (typeof syncTopMode === 'function') syncTopMode();
+      if (typeof updateDeleteBtn === 'function') updateDeleteBtn();
     }
 
-    btns.select.onclick = () => setMode('browse');
-    btns.modify.onclick = () => setMode('modify');
-    btns.drawPoint.onclick = () => setMode('draw:Point');
-    btns.drawLine.onclick = () => setMode('draw:LineString');
-    btns.drawPoly.onclick = () => setMode('draw:Polygon');
-    btns.stop.onclick = () => setMode('browse');
+    
 
     // Top mode & draw radio groups (Bootstrap)
     const modeTopSelect = document.getElementById('modeTopSelect');
@@ -379,6 +344,7 @@
     // Delete selected features
     // TODO: re-add a delete button as part of edit mode
     const deleteBtn = document.getElementById('deleteSelected');
+    if (deleteBtn) {
     selectInteraction.on('select', () => {
       deleteBtn.disabled = selectInteraction.getFeatures().getLength() === 0;
     });
@@ -387,6 +353,8 @@
       sel.getArray().forEach(f => featureSource.removeFeature(f));
       sel.clear();
     };
+    }
+
     // Keyboard delete
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Delete' || (e.key === 'Backspace' && (e.ctrlKey || e.metaKey))) {
@@ -398,7 +366,7 @@
       }
     });
 
-    function updateDeleteBtn() { deleteBtn.disabled = !(selectInteraction.getFeatures().getLength() > 0 && (mode === 'browse' || mode === 'modify')); }
+    function updateDeleteBtn() { if (!deleteBtn) return; deleteBtn.disabled = !(selectInteraction.getFeatures().getLength() > 0 && (mode === 'browse' || mode === 'modify')); }
     selectInteraction.on('select', updateDeleteBtn);
     setMode('browse');
 

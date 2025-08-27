@@ -26,6 +26,15 @@
   - Support LineStrings in draw mode
   - Starting to treat select|modify|draw and point|linestring|polygon as separate button groups
 
+#### 0.1.4 (GPT 5)
+  - Use Bootstrap for non-map interactive elements
+
+#### 0.1.5 (GPT 5)
+  - Consolidate add/draw controls in top menu
+
+#### 0.1.6 (Mochuelo-kun)
+  - Cleanup
+
 -->
 
 <!doctype html>
@@ -45,31 +54,6 @@
     .panel { position: absolute; z-index: 1000; background: rgba(255,255,255,0.95); color: #222; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
     .panel h3 { margin: 0 0 8px 0; font-size: 14px; }
 
-    #layersPanel { top: .75rem; right: .75rem; padding: .75rem; min-width: 260px; }
-    #layers { }
-
-    #featuresPanel { left: .75rem; top: .75rem; padding: .75rem; display: grid; gap: 8px; min-width: 260px; }
-    #featuresPanel .row { display: flex; gap: 8px; flex-wrap: wrap; }
-    #featuresPanel button, #featuresPanel label.btn { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
-    #featuresPanel button:disabled { opacity: .5; cursor: not-allowed; }
-    #featuresPanel input[type=file] { display: none; }
-
-    /* Avoid overlapping OL controls; add active button styling */
-    #featuresPanel { top: 4.5rem; }
-    .panel button.active { background: #222; color: #fff; border-color: #222; }
-    #info { min-width: 260px; }
-    .hidden { display: none; }
-    .menu-btn { position: absolute; top: .75rem; right: .75rem; z-index: 1102; background: #fff; border: 1px solid #bbb; border-radius: 999px; padding: 8px 10px; cursor: pointer; }
-    .menu-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.2); z-index: 1100; }
-    .menu-sheet { position: absolute; top: 0; right: 0; height: 100%; width: min(380px, 92%); background: rgba(255,255,255,0.98); border-left: 1px solid #ccc; box-shadow: -8px 0 24px rgba(0,0,0,0.12); z-index: 1101; overflow: auto; }
-    .menu-header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .75rem; border-bottom: 1px solid #eee; }
-    .menu-close { border: 1px solid #bbb; background: #fff; border-radius: 6px; cursor: pointer; padding: 2px 8px; }
-    .menu-content { padding: .75rem; }
-    .menu-sheet details { border: 1px solid #e5e5e5; border-radius: 8px; padding: .5rem .5rem .75rem; margin-bottom: .5rem; background: #fff; }
-    .menu-sheet summary { font-weight: 600; cursor: pointer; list-style: none; }
-    .menu-sheet summary::-webkit-details-marker { display: none; }
-    .search-group { position: relative; }
-
     /* Search bar */
     #searchPanel { position: absolute; left: 50%; top: .75rem; transform: translateX(-50%); width: min(720px, calc(100% - 1.5rem)); z-index: 1001; }
     #searchBox { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid #bbb; background: rgba(255,255,255,0.98); font-size: 14px; }
@@ -82,16 +66,11 @@
     #info { position: absolute; left: .75rem; bottom: .75rem; padding: 6px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: rgba(255,255,255,0.9); border-radius: 6px; border: 1px solid #ccc; z-index: 1000; }
 
     @media (max-width: 640px) {
-      #layersPanel, #featuresPanel { min-width: unset; width: calc(100% - 1.5rem); }
-      #layersPanel { top: auto; bottom: .75rem; right: .75rem; }
-      #featuresPanel { top: .75rem; left: .75rem; }
       #searchPanel { left: .75rem; right: .75rem; transform: none; width: calc(100% - 1.5rem); }
     }
-  #modeBar { position:absolute; left:50%; top:.75rem; transform:translateX(-50%); z-index:902; display:flex; gap:6px; background: rgba(255,255,255,0.95); border:1px solid #ccc; border-radius:999px; padding:4px; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
-    #modeBar button { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 999px; cursor: pointer; font-size: 13px; }
-    #modeBar button.active { background:#222; color:#fff; border-color:#222; }
-  #drawPop { position:absolute; top:3.25rem; left:50%; transform:translateX(-50%); z-index:903; display:flex; gap:6px; background: rgba(255,255,255,0.98); border:1px solid #ccc; border-radius:12px; padding:6px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
-    #drawPop button { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  #modeBar { position:absolute; left:50%; top:.75rem; transform:translateX(-50%); z-index:902; display:flex; gap:6px; }
+  #modeBar .btn-group { background-color: #fff; }
+
   </style>
 </head>
 <body>
@@ -99,21 +78,21 @@
     <div id="map"></div>
 
     <div id="modeBar" class="position-absolute start-50 translate-middle-x mt-2" role="toolbar" aria-label="Mode" style="z-index:1102;">
-      <div class="btn-group" role="group" aria-label="Mode">
+      <div class="modeGroup btn-group" role="group" aria-label="Mode">
         <input type="radio" class="btn-check" name="modeTop" id="modeTopSelect" autocomplete="off" checked>
-        <label class="btn btn-outline-secondary" for="modeTopSelect">☝️ Select</label>
+        <label class="btn btn-outline-secondary" for="modeTopSelect">☝️</label>
         <input type="radio" class="btn-check" name="modeTop" id="modeTopEdit" autocomplete="off">
-        <label class="btn btn-outline-secondary" for="modeTopEdit">✏️ Edit</label>
+        <label class="btn btn-outline-secondary" for="modeTopEdit">✏️</label>
         <input type="radio" class="btn-check" name="modeTop" id="modeTopDraw" autocomplete="off">
-        <label class="btn btn-outline-secondary" for="modeTopDraw">✚ Draw</label>
+        <label class="btn btn-outline-secondary" for="modeTopDraw">✚</label>
       </div>
       <div id="drawGroup" class="btn-group ms-2 d-none" role="group" aria-label="Draw shapes">
         <input type="radio" class="btn-check" name="drawShape" id="drawPointTop" autocomplete="off">
-        <label class="btn btn-outline-secondary" for="drawPointTop">• Point</label>
+        <label class="btn btn-outline-secondary" for="drawPointTop">•</label>
         <input type="radio" class="btn-check" name="drawShape" id="drawLineTop" autocomplete="off">
-        <label class="btn btn-outline-secondary" for="drawLineTop">— Line</label>
+        <label class="btn btn-outline-secondary" for="drawLineTop">—</label>
         <input type="radio" class="btn-check" name="drawShape" id="drawPolyTop" autocomplete="off">
-        <label class="btn btn-outline-secondary" for="drawPolyTop">▰ Polygon</label>
+        <label class="btn btn-outline-secondary" for="drawPolyTop">⬠</label>
       </div>
     </div>
 
@@ -283,8 +262,7 @@
 
     // Mode + drawing controls
     let mode = 'browse';
-    // consolidated: modes handled by top radio group only
-
+    
     let drawInteraction = null;
     function startDraw(type) {
       if (drawInteraction) map.removeInteraction(drawInteraction);
@@ -345,14 +323,14 @@
     // TODO: re-add a delete button as part of edit mode
     const deleteBtn = document.getElementById('deleteSelected');
     if (deleteBtn) {
-    selectInteraction.on('select', () => {
-      deleteBtn.disabled = selectInteraction.getFeatures().getLength() === 0;
-    });
-    deleteBtn.onclick = () => {
-      const sel = selectInteraction.getFeatures();
-      sel.getArray().forEach(f => featureSource.removeFeature(f));
-      sel.clear();
-    };
+      selectInteraction.on('select', () => {
+        deleteBtn.disabled = selectInteraction.getFeatures().getLength() === 0;
+      });
+      deleteBtn.onclick = () => {
+        const sel = selectInteraction.getFeatures();
+        sel.getArray().forEach(f => featureSource.removeFeature(f));
+        sel.clear();
+      };
     }
 
     // Keyboard delete

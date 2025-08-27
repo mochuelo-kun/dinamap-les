@@ -35,6 +35,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dinacon - Coral Reef Map – Les Village</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <style>
     html, body { height: 100%; margin: 0; }
     #app { height: 100%; width: 100%; position: relative; }
@@ -86,10 +87,10 @@
       #featuresPanel { top: .75rem; left: .75rem; }
       #searchPanel { left: .75rem; right: .75rem; transform: none; width: calc(100% - 1.5rem); }
     }
-  #modeBar { position:absolute; left:50%; top:.75rem; transform:translateX(-50%); z-index:1102; display:flex; gap:6px; background: rgba(255,255,255,0.95); border:1px solid #ccc; border-radius:999px; padding:4px; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+  #modeBar { position:absolute; left:50%; top:.75rem; transform:translateX(-50%); z-index:902; display:flex; gap:6px; background: rgba(255,255,255,0.95); border:1px solid #ccc; border-radius:999px; padding:4px; box-shadow:0 4px 12px rgba(0,0,0,0.12); }
     #modeBar button { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 999px; cursor: pointer; font-size: 13px; }
     #modeBar button.active { background:#222; color:#fff; border-color:#222; }
-  #drawPop { position:absolute; top:3.25rem; left:50%; transform:translateX(-50%); z-index:1103; display:flex; gap:6px; background: rgba(255,255,255,0.98); border:1px solid #ccc; border-radius:12px; padding:6px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
+  #drawPop { position:absolute; top:3.25rem; left:50%; transform:translateX(-50%); z-index:903; display:flex; gap:6px; background: rgba(255,255,255,0.98); border:1px solid #ccc; border-radius:12px; padding:6px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
     #drawPop button { border: 1px solid #bbb; background: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
   </style>
 </head>
@@ -97,66 +98,72 @@
   <div id="app">
     <div id="map"></div>
 
-    <div id="modeBar" role="toolbar" aria-label="Mode">
-      <button id="modeSelectTop" class="active" title="Select">☝️ Select</button>
-      <button id="modeEditTop" title="Edit">✏️ Edit</button>
-      <button id="modeDrawTop" title="Draw">✚ Draw</button>
-    </div>
-    <div id="drawPop" class="hidden">
-      <button id="drawPointTop">• Point</button>
-      <button id="drawLineTop">— Line</button>
-      <button id="drawPolyTop">▰ Polygon</button>
+    <div id="modeBar" class="position-absolute start-50 translate-middle-x mt-2" role="toolbar" aria-label="Mode" style="z-index:1102;">
+      <div class="btn-group" role="group" aria-label="Mode">
+        <input type="radio" class="btn-check" name="modeTop" id="modeTopSelect" autocomplete="off" checked>
+        <label class="btn btn-outline-secondary" for="modeTopSelect">☝️ Select</label>
+        <input type="radio" class="btn-check" name="modeTop" id="modeTopEdit" autocomplete="off">
+        <label class="btn btn-outline-secondary" for="modeTopEdit">✏️ Edit</label>
+        <input type="radio" class="btn-check" name="modeTop" id="modeTopDraw" autocomplete="off">
+        <label class="btn btn-outline-secondary" for="modeTopDraw">✚ Draw</label>
+      </div>
+      <div id="drawGroup" class="btn-group ms-2 d-none" role="group" aria-label="Draw shapes">
+        <input type="radio" class="btn-check" name="drawShape" id="drawPointTop" autocomplete="off">
+        <label class="btn btn-outline-secondary" for="drawPointTop">• Point</label>
+        <input type="radio" class="btn-check" name="drawShape" id="drawLineTop" autocomplete="off">
+        <label class="btn btn-outline-secondary" for="drawLineTop">— Line</label>
+        <input type="radio" class="btn-check" name="drawShape" id="drawPolyTop" autocomplete="off">
+        <label class="btn btn-outline-secondary" for="drawPolyTop">▰ Polygon</label>
+      </div>
     </div>
 
-    <button id="menuToggle" class="menu-btn" aria-label="Open menu">☰</button>
-    <div id="menuBackdrop" class="menu-backdrop hidden"></div>
-    <aside id="menuSheet" class="menu-sheet hidden" aria-label="Tools">
-      <header class="menu-header">
-        <div>Tools</div>
-        <button id="menuClose" class="menu-close" aria-label="Close">×</button>
-      </header>
-      <div class="menu-content">
+    <button class="btn btn-light border rounded-circle position-absolute top-0 end-0 m-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#toolsOffcanvas" aria-controls="toolsOffcanvas">☰</button>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="toolsOffcanvas" aria-labelledby="toolsLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="toolsLabel">Tools</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
         <details id="sec-select" open>
           <summary>Select</summary>
-          <div class="row" style="gap:6px; flex-wrap:wrap; margin-top:.5rem;">
-            <button id="selectMode" title="Browse/Select">☝️ Select</button>
-            <button id="modifyMode" title="Edit geometry">✏️ Modify</button>
-            <button id="deleteSelected" disabled>🗑️ Delete selected</button>
+          <div class="row g-2 mt-2">
+            <div class="col-auto"><button id="selectMode" class="btn btn-outline-secondary">☝️ Select</button></div>
+            <div class="col-auto"><button id="modifyMode" class="btn btn-outline-secondary">✏️ Modify</button></div>
+            <div class="col-auto"><button id="deleteSelected" class="btn btn-outline-danger" disabled>🗑️ Delete selected</button></div>
           </div>
         </details>
         <details id="sec-edit">
           <summary>Add / Edit Feature</summary>
-          <div id="drawTools" class="row" style="gap:6px; flex-wrap:wrap; margin-top:.5rem;">
-            <button id="drawPoint">• Point</button>
-            <button id="drawLine">— Line</button>
-            <button id="drawPoly">▰ Polygon</button>
-            <button id="stopDraw" title="Stop drawing / disable interactions">⏹ Stop</button>
+          <div id="drawTools" class="row g-2 mt-2">
+            <div class="col-auto"><button id="drawPoint" class="btn btn-outline-secondary">• Point</button></div>
+            <div class="col-auto"><button id="drawLine" class="btn btn-outline-secondary">— Line</button></div>
+            <div class="col-auto"><button id="drawPoly" class="btn btn-outline-secondary">▰ Polygon</button></div>
+            <div class="col-auto"><button id="stopDraw" class="btn btn-outline-secondary">⏹ Stop</button></div>
           </div>
         </details>
         <details id="sec-io">
           <summary>Load / Save</summary>
-          <div class="row" style="gap:6px; flex-wrap:wrap; margin-top:.5rem;">
-            <button id="saveGeojson" disabled>💾 Save GeoJSON</button>
-            <label class="btn" for="fileGeojson">📁 Load GeoJSON</label>
-            <input id="fileGeojson" type="file" accept=".geojson,.json" />
-            <button id="clearGeojson" disabled>🧹 Clear all</button>
+          <div class="row g-2 mt-2">
+            <div class="col-auto"><button id="saveGeojson" class="btn btn-outline-primary" disabled>💾 Save GeoJSON</button></div>
+            <div class="col-auto"><label class="btn btn-outline-secondary" for="fileGeojson">📁 Load GeoJSON</label></div>
+            <input id="fileGeojson" type="file" accept=".geojson,.json" class="d-none" />
+            <div class="col-auto"><button id="clearGeojson" class="btn btn-outline-danger" disabled>🧹 Clear all</button></div>
           </div>
         </details>
         <details id="sec-search">
           <summary>Search / Fly-to</summary>
-          <div class="search-group" style="margin-top:.5rem;">
-            <input id="searchBox" type="search" placeholder="Search places (Nominatim)…" autocomplete="off" style="width:100%; box-sizing:border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid #bbb; background: rgba(255,255,255,0.98); font-size: 14px;" />
-            <div id="searchResults"></div>
+          <div class="mt-2">
+            <input id="searchBox" type="search" class="form-control" placeholder="Search places (Nominatim)…" autocomplete="off" />
+            <div id="searchResults" class="list-group mt-2" style="display:none;"></div>
           </div>
         </details>
         <details id="sec-layers" open>
           <summary>Layers</summary>
-          <div id="layers" style="margin-top:.5rem;"></div>
+          <div id="layers" class="mt-2"></div>
         </details>
       </div>
-    </aside>
+    </div>
 
-    <!-- removed in favor of unified Tools menu -->
     <!-- removed in favor of unified Tools menu -->
 
     <div id="info" class="panel" style="left:.75rem; bottom:.75rem; display:none; padding:.5rem .75rem;">
@@ -171,6 +178,7 @@
   <!-- OpenLayers GeoTIFF features need geotiff library loaded first -->
   <script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
   <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // ---- Minimal state -------------------------------------------------------
     const state = {
@@ -257,8 +265,16 @@
     const tempSource = new ol.source.Vector();
     const tempLayer = new ol.layer.Vector({
       source: tempSource,
+    //   style: new ol.style.Style({
+    //     image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: '#ffff00' }), stroke: new ol.style.Stroke({ color: '#000', width: 2 }) })
+    //   }),
       style: new ol.style.Style({
-        image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: '#ffff00' }), stroke: new ol.style.Stroke({ color: '#000', width: 2 }) })
+        text: new ol.style.Text({
+          text: '⌖',
+          font: 'bold 24px sans-serif',
+          fill: new ol.style.Fill({ color: '#ffffff' }),
+          stroke: new ol.style.Stroke({ color: '#000', width: 3 }),
+        }),
       }),
       zIndex: 1100,
     });
@@ -322,40 +338,51 @@
 
     btns.select.onclick = () => setMode('browse');
     btns.modify.onclick = () => setMode('modify');
-        btns.drawPoint.onclick = () => setMode('draw:Point');
+    btns.drawPoint.onclick = () => setMode('draw:Point');
     btns.drawLine.onclick = () => setMode('draw:LineString');
     btns.drawPoly.onclick = () => setMode('draw:Polygon');
     btns.stop.onclick = () => setMode('browse');
 
-    const modeSelectTop = document.getElementById('modeSelectTop');
-    const modeEditTop = document.getElementById('modeEditTop');
-    modeSelectTop.onclick = () => setMode('browse');
-    modeEditTop.onclick = () => setMode('modify');
-    const modeDrawTop = document.getElementById('modeDrawTop');
-    const drawPop = document.getElementById('drawPop');
+    
+    // const inPop = drawPop.contains(e.target);
+    // if (!inBar && !inPop) closeDrawPop();
+    
+
+    // Top mode & draw radio groups (Bootstrap)
+    const modeTopSelect = document.getElementById('modeTopSelect');
+    const modeTopEdit = document.getElementById('modeTopEdit');
+    const modeTopDraw = document.getElementById('modeTopDraw');
+    const drawGroup = document.getElementById('drawGroup');
     const drawPointTop = document.getElementById('drawPointTop');
     const drawLineTop = document.getElementById('drawLineTop');
     const drawPolyTop = document.getElementById('drawPolyTop');
-    function closeDrawPop(){ drawPop.classList.add('hidden'); }
-    function toggleDrawPop(){ drawPop.classList.toggle('hidden'); }
-    modeDrawTop.onclick = () => toggleDrawPop();
-    drawPointTop.onclick = () => { setMode('draw:Point'); closeDrawPop(); };
-    drawLineTop.onclick = () => { setMode('draw:LineString'); closeDrawPop(); };
-    drawPolyTop.onclick = () => { setMode('draw:Polygon'); closeDrawPop(); };
-    document.addEventListener('click', (e) => {
-      const inBar = document.getElementById('modeBar').contains(e.target);
-      const inPop = drawPop.contains(e.target);
-      if (!inBar && !inPop) closeDrawPop();
-    });
+    let lastDrawShape = 'Point';
+
+    modeTopSelect.addEventListener('change', () => setMode('browse'));
+    modeTopEdit.addEventListener('change', () => setMode('modify'));
+    modeTopDraw.addEventListener('change', () => setMode(`draw:${lastDrawShape}`));
+    drawPointTop.addEventListener('change', () => { lastDrawShape = 'Point'; setMode('draw:Point'); });
+    drawLineTop.addEventListener('change', () => { lastDrawShape = 'LineString'; setMode('draw:LineString'); });
+    drawPolyTop.addEventListener('change', () => { lastDrawShape = 'Polygon'; setMode('draw:Polygon'); });
+
     function syncTopMode(){
-      modeSelectTop.classList.toggle('active', mode === 'browse');
-      const isDraw = (typeof mode === 'string' && mode.startsWith('draw:'));
-      modeEditTop.classList.toggle('active', mode === 'modify');
-      const modeDrawTopEl = document.getElementById('modeDrawTop');
-      if (modeDrawTopEl) modeDrawTopEl.classList.toggle('active', isDraw);
+      const isDraw = typeof mode === 'string' && mode.startsWith('draw:');
+      modeTopSelect.checked = mode === 'browse';
+      modeTopEdit.checked = mode === 'modify';
+      modeTopDraw.checked = isDraw;
+      drawGroup.classList.toggle('d-none', !isDraw);
+      if (isDraw) {
+        const shape = mode.split(':')[1];
+        drawPointTop.checked = shape === 'Point';
+        drawLineTop.checked = shape === 'LineString';
+        drawPolyTop.checked = shape === 'Polygon';
+      } else {
+        drawPointTop.checked = drawLineTop.checked = drawPolyTop.checked = false;
+      }
     }
 
     // Delete selected features
+    // TODO: re-add a delete button as part of edit mode
     const deleteBtn = document.getElementById('deleteSelected');
     selectInteraction.on('select', () => {
       deleteBtn.disabled = selectInteraction.getFeatures().getLength() === 0;
@@ -537,17 +564,6 @@
       map.getView().animate({ zoom: 7, duration: 250 }, { center: ol.proj.fromLonLat([lon, lat]), duration: 650 }, { zoom, duration: 300 });
     }
     window.flyTo = flyTo;
-
-    const menuToggle = document.getElementById('menuToggle');
-    const menuBackdrop = document.getElementById('menuBackdrop');
-    const menuSheet = document.getElementById('menuSheet');
-    const menuClose = document.getElementById('menuClose');
-    function openMenu(){ menuSheet.classList.remove('hidden'); menuBackdrop.classList.remove('hidden'); }
-    function closeMenu(){ menuSheet.classList.add('hidden'); menuBackdrop.classList.add('hidden'); }
-    if (menuToggle) menuToggle.addEventListener('click', ()=>{ menuSheet.classList.contains('hidden') ? openMenu() : closeMenu(); });
-    if (menuClose) menuClose.addEventListener('click', closeMenu);
-    if (menuBackdrop) menuBackdrop.addEventListener('click', closeMenu);
-    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeMenu(); });
   </script>
 </body>
 </html>

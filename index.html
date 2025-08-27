@@ -46,7 +46,7 @@
     .panel h3 { margin: 0 0 8px 0; font-size: 14px; }
 
     #layersPanel { top: .75rem; right: .75rem; padding: .75rem; min-width: 260px; }
-    #layers { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; font-size: 14px; }
+    #layers { }
 
     #featuresPanel { left: .75rem; top: .75rem; padding: .75rem; display: grid; gap: 8px; min-width: 260px; }
     #featuresPanel .row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -343,11 +343,6 @@
     btns.drawPoly.onclick = () => setMode('draw:Polygon');
     btns.stop.onclick = () => setMode('browse');
 
-    
-    // const inPop = drawPop.contains(e.target);
-    // if (!inBar && !inPop) closeDrawPop();
-    
-
     // Top mode & draw radio groups (Bootstrap)
     const modeTopSelect = document.getElementById('modeTopSelect');
     const modeTopEdit = document.getElementById('modeTopEdit');
@@ -487,16 +482,26 @@
       container.innerHTML = '';
       state.layersConfig.forEach((cfg) => {
         const id = `layer_${cfg.id}`;
-        const cb = document.createElement('input');
-        cb.type = 'checkbox'; cb.id = id; cb.checked = !!cfg.visible;
-        const label = document.createElement('label'); label.htmlFor = id; label.textContent = cfg.label || cfg.id;
-        cb.addEventListener('change', () => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'form-check form-switch';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.className = 'form-check-input';
+        input.id = id;
+        input.checked = !!cfg.visible;
+        const label = document.createElement('label');
+        label.className = 'form-check-label';
+        label.htmlFor = id;
+        label.textContent = cfg.label || cfg.id;
+        input.addEventListener('change', () => {
           const layer = state.layersById.get(cfg.id);
-          if (layer) layer.setVisible(cb.checked);
+          if (layer) layer.setVisible(input.checked);
         });
-        container.appendChild(cb); container.appendChild(label);
+        wrapper.appendChild(input);
+        wrapper.appendChild(label);
+        container.appendChild(wrapper);
       });
-    }
+    };
 
     function applyLayers() {
       // Remove previous non-feature layers
@@ -535,15 +540,16 @@
       searchResults.innerHTML = '';
       if (!items || !items.length) { searchResults.style.display = 'none'; return; }
       items.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.textContent = item.display_name;
-        div.onclick = () => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'list-group-item list-group-item-action';
+        btn.textContent = item.display_name;
+        btn.addEventListener('click', () => {
           const lat = parseFloat(item.lat), lon = parseFloat(item.lon);
           flyTo(lat, lon, 15);
           searchResults.style.display = 'none';
-        };
-        searchResults.appendChild(div);
+        });
+        searchResults.appendChild(btn);
       });
       searchResults.style.display = 'block';
     }

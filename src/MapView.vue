@@ -29,6 +29,7 @@ const emit = defineEmits(["features", "info", "request-layer-sync"]);
 const mapEl = ref(null);
 let map, featureLayer, featureSource, tempLayer, tempSource;
 let selectInteraction, modifyInteraction, drawInteraction;
+let selectedFeature = null;
 const gj = new GeoJSON();
 
 function loadGeoJSON(geojson) { setFeaturesFromGeoJSON(geojson); }
@@ -47,7 +48,37 @@ function flyTo(lat, lon, zoom = 13) {
     { zoom, duration: 300 }
   );
 }
-defineExpose({ loadGeoJSON, clearFeatures, getFeaturesFC, setLayerVisibility, flyTo });
+
+/** NEW: update/delete selected feature */
+function updateSelectedFeatureProps(partialProps = {}) {
+  if (!selectedFeature) return null;
+  const current = { ...selectedFeature.getProperties() }; // includes geometry; strip it
+  delete current.geometry;
+  const merged = { ...current, ...partialProps };
+  selectedFeature.setProperties(merged); // geometry left intact
+  refreshStateFromSource();
+
+  const center = featureCenter(selectedFeature);
+  const { lat, lon } = fmtLatLon(center);
+  const updated = gj.writeFeatureObject(selectedFeature, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });
+  // refresh visible toast with new props
+  emit("info", { visible: true, lat, lon, feature: updated });
+  return updated;
+}
+function deleteSelectedFeature() {
+  if (!selectedFeature) return false;
+  featureSource.removeFeature(selectedFeature);
+  selectInteraction.getFeatures().clear();
+  selectedFeature = null;
+  refreshStateFromSource();
+  emit("info", { visible: false, lat: 0, lon: 0, feature: null });
+  return true;
+}
+
+defineExpose({
+  loadGeoJSON, clearFeatures, getFeaturesFC, setLayerVisibility, flyTo,
+  updateSelectedFeatureProps, deleteSelectedFeature
+});
 
 function pointStyle() {
   return new Style({
@@ -145,32 +176,31 @@ onMounted(() => {
   featureSource.on("changefeature", refreshStateFromSource);
   featureSource.on("removefeature", refreshStateFromSource);
 
-  // Click → always show coords; if feature hit, include its properties & full feature JSON
-  map.on("singleclick", (evt) => {
-    const isBrowse = props.mode === "browse";
-    tempSource.clear();
+  // Selection → show toast (in browse OR modify, but modify requires a feature)
+  selectInteraction.on("select", (e) => {
+    selectedFeature = e.selected[0] || null;
+    if (!selectedFeature) {
+      if (props.mode === "modify") emit("info", { visible: false, lat: 0, lon: 0, feature: null });
+      return;
+    }
+    const center = featureCenter(selectedFeature);
+    const { lat, lon } = fmtLatLon(center);
+    const fObj = gj.writeFeatureObject(selectedFeature, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });
+    emit("info", { visible: true, lat, lon, feature: fObj });
+  });
 
-    // Find feature under cursor
+  // Click: show coords and feature (if any) in browse mode; in modify, rely on selection handler above
+  map.on("singleclick", (evt) => {
+    tempSource.clear();
     const hit = map.forEachFeatureAtPixel(evt.pixel, (f) => f, { layerFilter: (l) => l === featureLayer });
 
-    // Choose which coordinate to show (center of feature or click location)
-    const coord = hit ? featureCenter(hit) : evt.coordinate;
-    const { lat, lon } = fmtLatLon(coord);
-
-    // If no feature, drop a tiny temp marker at click (optional but helpful)
-    if (!hit) tempSource.addFeature(new Feature(new Point(evt.coordinate)));
-
-    // Package an optional GeoJSON Feature for the toast
-    let geojsonFeature = null;
-    if (hit) {
-      geojsonFeature = gj.writeFeatureObject(hit, {
-        dataProjection: "EPSG:4326",
-        featureProjection: "EPSG:3857",
-      });
+    if (props.mode === "browse") {
+      const coord = hit ? featureCenter(hit) : evt.coordinate;
+      const { lat, lon } = fmtLatLon(coord);
+      if (!hit) tempSource.addFeature(new Feature(new Point(evt.coordinate)));
+      const fObj = hit ? gj.writeFeatureObject(hit, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" }) : null;
+      emit("info", { visible: true, lat, lon, feature: fObj });
     }
-
-    // Only show toast automatically in browse mode; in other modes you can still wire it if you want
-    emit("info", { visible: isBrowse, lat, lon, feature: geojsonFeature });
   });
 
   applyLayers();

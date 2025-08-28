@@ -20,7 +20,7 @@ const info = reactive({
   visible: false,
   lat: 0,
   lon: 0,
-  feature: null, // GeoJSON Feature or null
+  feature: null,
 });
 
 function handleModeChange({ mode, drawShape }) {
@@ -58,6 +58,16 @@ function handleSaveGeoJSON() {
 function handleClearAll() { mapRef.value?.clearFeatures(); }
 function toggleLayer(id, visible) { mapRef.value?.setLayerVisibility(id, visible); }
 function flyTo(lat, lon, zoom = 15) { mapRef.value?.flyTo(lat, lon, zoom); }
+
+/** NEW: Editor actions from InfoToast */
+function saveProps(payload) {
+  const updated = mapRef.value?.updateSelectedFeatureProps(payload);
+  if (updated) info.feature = updated; // refresh view
+}
+function deleteSelected() {
+  const ok = mapRef.value?.deleteSelectedFeature();
+  if (ok) info.visible = false;
+}
 </script>
 
 <template>
@@ -92,10 +102,13 @@ function flyTo(lat, lon, zoom = 15) { mapRef.value?.flyTo(lat, lon, zoom); }
 
     <InfoToast
       v-if="info.visible"
+      :mode="ui.mode"
       :lat="info.lat"
       :lon="info.lon"
       :feature="info.feature"
       @close="info.visible=false"
+      @save-props="saveProps"
+      @delete="deleteSelected"
     />
   </div>
 </template>

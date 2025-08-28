@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch, nextTick } from "vue";
 
-import Map from "ol/Map";
+import OLMap from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import WebGLTile from "ol/layer/WebGLTile";
@@ -30,6 +30,7 @@ const mapEl = ref(null);
 let map, featureLayer, featureSource, tempLayer, tempSource;
 let selectInteraction, modifyInteraction, drawInteraction;
 let selectedFeature = null;
+const ready = ref(false);
 const gj = new GeoJSON();
 
 function loadGeoJSON(geojson) { setFeaturesFromGeoJSON(geojson); }
@@ -40,7 +41,11 @@ function getFeaturesFC() {
   });
 }
 const layerById = new Map();
-function setLayerVisibility(id, visible) { const lyr = layerById.get(id); if (lyr) lyr.setVisible(!!visible); }
+function setLayerVisibility(id, visible) {
+  if (!ready.value || !map) return;
+  const lyr = layerById.get(id);
+  if (lyr) lyr.setVisible(!!visible);
+}
 function flyTo(lat, lon, zoom = 13) {
   map.getView().animate(
     { zoom: 7, duration: 250 },
@@ -104,6 +109,7 @@ function featureCenter(f) {
 function refreshStateFromSource() { emit("features", getFeaturesFC()); }
 
 function applyMode() {
+  if (!ready.value || !selectInteraction || !modifyInteraction) return;
   const isModify = props.mode === "modify";
   const isDraw = props.mode === "draw";
   selectInteraction.setActive(!isDraw || isModify);
@@ -117,6 +123,7 @@ function applyMode() {
 }
 
 function applyLayers() {
+  if (!ready.value || !map) return;
   map.getLayers().getArray().slice().forEach((lyr) => { if (lyr !== featureLayer && lyr !== tempLayer) map.removeLayer(lyr); });
   layerById.clear();
   for (const cfg of props.layersConfig) {
@@ -161,7 +168,7 @@ onMounted(() => {
   tempSource = new VectorSource();
   tempLayer = new VectorLayer({ source: tempSource, style: crosshairStyle(), zIndex: 1100 });
 
-  map = new Map({
+  map = new OLMap({
     target: mapEl.value,
     layers: [featureLayer, tempLayer],
     view: new View({ center: fromLonLat([115.367526, -8.129998]), zoom: 18 }),
@@ -169,8 +176,10 @@ onMounted(() => {
   });
 
   selectInteraction = new Select();
-  modifyInteraction = new Modify({ source: featureSource }); modifyInteraction.setActive(false);
-  map.addInteraction(selectInteraction); map.addInteraction(modifyInteraction);
+  modifyInteraction = new Modify({ source: featureSource });
+  modifyInteraction.setActive(false);
+  map.addInteraction(selectInteraction);
+  map.addInteraction(modifyInteraction);
 
   featureSource.on("addfeature", refreshStateFromSource);
   featureSource.on("changefeature", refreshStateFromSource);
@@ -203,14 +212,16 @@ onMounted(() => {
     }
   });
 
+  ready.value = true;
   applyLayers();
   emit("request-layer-sync");
 });
 
-onBeforeUnmount(() => { if (map) map.setTarget(undefined); });
+// UPDATED: watchers (no immediate); they bail if not ready
+watch(() => [props.mode, props.drawShape], () => applyMode());
+watch(() => props.layersConfig, () => applyLayers());
 
-watch(() => [props.mode, props.drawShape], applyMode, { immediate: true });
-watch(() => props.layersConfig, applyLayers);
+onBeforeUnmount(() => { if (map) map.setTarget(undefined); });
 </script>
 
 <template>

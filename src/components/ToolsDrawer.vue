@@ -6,6 +6,7 @@ const props = defineProps({
   layers: { type: Array, default: () => [] },
   hasFeatures: { type: Boolean, default: false },
   manifestUrl: { type: String, default: "" },
+  remoteFeatureCollections: { type: Array, default: () => [] },
 });
 const emit = defineEmits([
   "close",
@@ -13,6 +14,9 @@ const emit = defineEmits([
   "load-geojson",
   "save-geojson",
   "clear-geojson",
+  "list-geojson-remote",
+  "load-geojson-remote",
+  "save-geojson-remote",
   "refresh-manifest",
   "fly-to",
 ]);
@@ -69,11 +73,20 @@ async function doSearch() {
 
     <section>
       <details>
-        <summary>Load / Save</summary>
+        <summary>Load / Save Features</summary>
         <div style="margin-top:.5rem; display:flex; gap:.5rem; flex-wrap:wrap;">
-          <button class="chip" :disabled="!hasFeatures" @click="emit('save-geojson')">💾 Save GeoJSON</button>
-          <button class="chip" @click="fileEl.click()">📁 Load GeoJSON</button>
+          <button class="chip" :disabled="!hasFeatures" @click="emit('save-geojson')">💾 Save GeoJSON (Local)</button>
+          <button class="chip" @click="fileEl.click()">📁 Load GeoJSON (Local)</button>
           <input ref="fileEl" type="file" accept=".geojson,.json" class="hidden" @change="onFileChosen" />
+
+          <button class="chip" @click="$emit('save-geojson-remote')">⬆️ Save GeoJSON (Remote) </button>
+          <button class="chip" @click="$emit('list-geojson-remote')">📜 Load GeoJSON (Remote) </button>
+          <div class="list" v-if="remoteFeatureCollections.length">
+            <button v-for="k in remoteFeatureCollections" :key="k" @click="$emit('load-geojson-remote', k)">
+              {{ k }}
+            </button>
+          </div>
+
           <button class="chip" :disabled="!hasFeatures" @click="emit('clear-geojson')">🧹 Clear all</button>
         </div>
       </details>

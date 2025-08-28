@@ -1,9 +1,12 @@
 <script setup>
 import { reactive, ref } from "vue";
+import * as s3Adapter from "./lib/s3";
 import MapView from "./components/MapView.vue";
 import TopBar from "./components/TopBar.vue";
 import ToolsDrawer from "./components/ToolsDrawer.vue";
 import InfoToast from "./components/InfoToast.vue";
+
+const MANIFEST_CONFIG  = import.meta.env.VITE_DEFAULT_CONFIG_MANIFEST;
 
 const mapRef = ref(null);
 const drawerOpen = ref(false);
@@ -11,7 +14,7 @@ const drawerOpen = ref(false);
 const ui = reactive({
   mode: "browse",
   drawShape: "Point",
-  manifestUrl: "https://dinamap-les.s3.ap-southeast-1.amazonaws.com/metadata/layers_202507200627.json",
+  manifestUrl: MANIFEST_CONFIG,
   layersConfig: [],
   features: { type: "FeatureCollection", features: [] },
 });
@@ -59,7 +62,30 @@ function handleSaveGeoJSON() {
   a.download = `features-${new Date().toISOString().slice(0,10)}.geojson`;
   a.click(); URL.revokeObjectURL(a.href);
 }
-function handleClearAll() { mapRef.value?.clearFeatures(); }
+function handleClearGeoJSON() { mapRef.value?.clearFeatures(); }
+
+const remoteFeatureCollections = ref([]);
+
+async function saveRemoteGeoJSON() {
+  const fc = mapRef.value?.getFeaturesFC();
+  if (!fc) return;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const key = `features-${timestamp}.geojson`;
+  const url = await s3Adapter.putRemoteGeoJSON(key, fc);
+  // optional: surface to user
+  alert(`Saved to S3:\n${url}`);
+}
+
+async function listRemoteGeoJSON() {
+  remoteFeatureCollections.value = await s3Adapter.listRemoteGeoJSON();
+}
+
+async function loadRemoteGeoJSON(key) {
+  const fc = await s3Adapter.getRemoteGeoJSON(key);
+  // append with dedupe (your MapView already supports this)
+  mapRef.value?.loadGeoJSON(fc, { dedupe: true, prefer: "incoming" });
+}
+
 function toggleLayer(id, visible) { mapRef.value?.setLayerVisibility(id, visible); }
 function flyTo(lat, lon, zoom = 15) { mapRef.value?.flyTo(lat, lon, zoom); }
 
@@ -95,7 +121,11 @@ function deleteSelected() {
       @toggle-layer="toggleLayer"
       @load-geojson="handleLoadGeoJSON"
       @save-geojson="handleSaveGeoJSON"
-      @clear-geojson="handleClearAll"
+      :remote-feature-collections="remoteFeatureCollections"
+      @save-geojson-remote="saveRemoteGeoJSON"
+      @list-geojson-remote="listRemoteGeoJSON"
+      @load-geojson-remote="loadRemoteGeoJSON"
+      @clear-geojson="handleClearGeoJSON"
       @fly-to="flyTo"
     />
 

@@ -56,15 +56,6 @@ details > summary { cursor: pointer; padding: 10px 0; font-weight: 600; }
 /* Map container */
 .map-wrap { height: 100%; width: 100%; }
 
-/* Info chip */
-.info {
-  position: absolute; left: .75rem; bottom: .75rem; z-index: 20;
-  background: var(--panel-bg); border: 1px solid var(--panel-border);
-  border-radius: 10px; box-shadow: var(--shadow);
-  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
-  padding: 8px 10px; max-width: 90vw;
-}
-
 /* Inputs */
 input[type="search"], input[type="file"], input[type="text"] {
   width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--panel-border); background: #fff;

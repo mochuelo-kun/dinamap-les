@@ -33,7 +33,89 @@ let selectedFeature = null;
 const ready = ref(false);
 const gj = new GeoJSON();
 
-function loadGeoJSON(geojson) { setFeaturesFromGeoJSON(geojson); }
+// ---------- ID helpers ----------
+function fnv1a(str) {            // tiny stable hash
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return (h >>> 0).toString(16);
+}
+function ensureFeatureId(olFeat) {
+  const props = { ...olFeat.getProperties() };
+  delete props.geometry;
+  if (props.id !== undefined && props.id !== null && String(props.id) !== "") return String(props.id);
+  // Build deterministic-ish ID from center + geometry signature
+  const c = featureCenter(olFeat);
+  const [lon, lat] = toLonLat(c);
+  const latF = Number.isFinite(lat) ? lat.toFixed(6) : "0";
+  const lonF = Number.isFinite(lon) ? lon.toFixed(6) : "0";
+  const geomJSON = gj.writeFeatureObject(olFeat, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" }).geometry;
+  const sig = fnv1a(JSON.stringify(geomJSON)).slice(0, 8);
+  const id = `${olFeat.getGeometry().getType()}@${latF},${lonF}#${sig}`;
+  olFeat.set("id", id);
+  return id;
+}
+function getPropId(olFeat) {
+  const props = { ...olFeat.getProperties() }; delete props.geometry;
+  if (props.id !== undefined && props.id !== null && String(props.id) !== "") return String(props.id);
+  return ensureFeatureId(olFeat);
+}
+function ensureIdsForSource() {
+  for (const f of featureSource.getFeatures()) ensureFeatureId(f);
+}
+
+// Append incoming features; optionally dedupe by properties.id
+function loadGeoJSON(geojson, opts = { dedupe: true, prefer: "incoming" }) {
+  if (!featureSource || !geojson) return;
+  const feats = readIncoming(geojson);
+  if (!feats.length) return;
+  
+  // Make sure every existing feature has an id
+  ensureIdsForSource();
+  if (opts.dedupe) {
+    const byId = new Map();
+    for (const f of featureSource.getFeatures()) {
+      byId.set(getPropId(f), f);
+    }
+    for (const nf of feats) {
+      const pid = getPropId(nf); // ensures id on the incoming feature if missing
+      if (byId.has(pid)) {
+        if (opts.prefer === "incoming") {
+          featureSource.removeFeature(byId.get(pid));
+          featureSource.addFeature(nf);
+          byId.set(pid, nf);
+        }
+        // else: skip duplicate
+      } else {
+        featureSource.addFeature(nf);
+        byId.set(pid, nf);
+      }
+    }
+  } else {
+    for (const nf of feats) { ensureFeatureId(nf); }
+    featureSource.addFeatures(feats);
+  }
+  refreshStateFromSource();
+}
+
+ // helper: accept FeatureCollection or single Feature
+function readIncoming(input) {
+  try {
+    if (input.type === "FeatureCollection") {
+      const arr = gj.readFeatures(input, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });
+      return arr;
+    }
+    if (input.type === "Feature") {
+      return [gj.readFeature(input, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" })];
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 function clearFeatures() { setFeaturesFromGeoJSON({ type: "FeatureCollection", features: [] }); }
 function getFeaturesFC() {
   return gj.writeFeaturesObject(featureSource.getFeatures(), {
@@ -124,6 +206,7 @@ function applyMode() {
     
       // Auto-select the feature that was just drawn
       const f = e.feature;
+      ensureFeatureId(f); // <--- ensure id on new drawings
       selectedFeature = f;
       const sel = selectInteraction.getFeatures();
       sel.clear();
@@ -174,6 +257,7 @@ function setFeaturesFromGeoJSON(fc) {
   featureSource.clear();
   if (fc?.features?.length) {
     const feats = gj.readFeatures(fc, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });
+    for (const f of feats) ensureFeatureId(f);
     featureSource.addFeatures(feats);
   }
   refreshStateFromSource();
@@ -234,8 +318,9 @@ onMounted(() => {
     }
   });
 
-  ready.value = true;
+  applyMode();
   applyLayers();
+  ready.value = true;
   emit("request-layer-sync");
 });
 

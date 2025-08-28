@@ -47,6 +47,10 @@ function onInfo(payload) {
   info.feature = payload.feature ?? null;
 }
 
+function applySuggestedMode({ mode }) {
+  if (mode) ui.mode = mode;
+}
+
 function handleLoadGeoJSON(geojson) { mapRef.value?.loadGeoJSON(geojson); }
 function handleSaveGeoJSON() {
   const blob = new Blob([JSON.stringify(ui.features, null, 2)], { type: "application/json" });
@@ -63,10 +67,16 @@ function flyTo(lat, lon, zoom = 15) { mapRef.value?.flyTo(lat, lon, zoom); }
 function saveProps(payload) {
   const updated = mapRef.value?.updateSelectedFeatureProps(payload);
   if (updated) info.feature = updated; // refresh view
+  // Natural transition: modify -> browse after saving
+  ui.mode = "browse";
 }
 function deleteSelected() {
   const ok = mapRef.value?.deleteSelectedFeature();
-  if (ok) info.visible = false;
+  if (ok) {
+    // Natural transition: modify -> browse after deleting
+    ui.mode = "browse";
+    info.visible = false;
+  }
 }
 </script>
 
@@ -98,6 +108,7 @@ function deleteSelected() {
       @features="onFeaturesChanged"
       @info="onInfo"
       @request-layer-sync="loadManifest"
+      @suggest-mode="applySuggestedMode"
     />
 
     <InfoToast

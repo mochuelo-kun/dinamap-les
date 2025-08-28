@@ -65,13 +65,9 @@ function onDelete() { emit("delete"); }
 
 <template>
   <div class="info" role="dialog" aria-label="Map info">
-    <div class="info__hdr">
-      <strong>Info</strong>
-      <button class="iconbtn info__close" @click="emit('close')" aria-label="Close">×</button>
-    </div>
-
     <div class="info__coords">
-      <span>Lat {{ fmt(lat) }}, Lon {{ fmt(lon) }}</span>
+      <span>Lon/Lat: [ {{ fmt(lon) }}, {{ fmt(lat) }} ]</span>
+      <button class="iconbtn info__close" @click="emit('close')" aria-label="Close">×</button>
     </div>
 
     <!-- Read-only view (browse / draw) -->
@@ -101,6 +97,11 @@ function onDelete() { emit("delete"); }
     <!-- Editor (modify mode + feature selected) -->
     <template v-else>
       <div class="info__section">
+        <div class="actions">
+          <button class="chip" @click="onSave">💾 Save</button>
+          <button class="chip danger" @click="onDelete">🗑️ Delete</button>
+        </div>
+
         <label class="field">
           <span class="label">Name</span>
           <input type="text" v-model="form.name" placeholder="—" />
@@ -119,17 +120,12 @@ function onDelete() { emit("delete"); }
         <div class="grid2">
           <label class="field">
             <span class="label">Date added</span>
-            <input type="text" v-model="form.dateAdded" placeholder="YYYY-MM-DD or free text" />
+            <input type="text" v-model="form.dateAdded" placeholder="YYYY-MM-DD" />
           </label>
           <label class="field">
             <span class="label">Date removed</span>
-            <input type="text" v-model="form.dateRemoved" placeholder="YYYY-MM-DD or free text" />
+            <input type="text" v-model="form.dateRemoved" placeholder="YYYY-MM-DD" />
           </label>
-        </div>
-
-        <div class="actions">
-          <button class="chip" @click="onSave">💾 Save</button>
-          <button class="chip danger" @click="onDelete">🗑️ Delete</button>
         </div>
       </div>
 
@@ -152,8 +148,7 @@ function onDelete() { emit("delete"); }
 }
 @media (min-width: 1024px) { .info { max-height: 33vh; max-width: 33vw; } }
 
-.info__hdr { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-bottom:.25rem; }
-.info__coords { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; opacity:.9; }
+.info__coords { display:flex; align-items:center; justify-content:space-between; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; opacity:.9; gap:.5rem; margin-bottom:.25rem; font-style: italic; }
 .info__section { margin-top:.5rem; }
 .info__title { font-weight:600; margin-bottom:.25rem; }
 .info__descr { font-size:14px; opacity:.95; }
@@ -164,7 +159,7 @@ function onDelete() { emit("delete"); }
 .field { display:flex; flex-direction:column; gap:.25rem; margin:.35rem 0; }
 .field .label { font-size:12px; opacity:.8; }
 .field input[type="text"], textarea {
-  border:1px solid var(--panel-border); border-radius:10px; padding:8px 10px; font-size:14px; background:#fff; resize: vertical;
+  border:1px solid var(--panel-border); border-radius:10px; padding:8px 10px; font-size:14px; background:#fff; resize: vertical; min-width: 0; min-width:0; box-sizing:border-box; max-width:100%;
 }
 
 .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:.5rem; }

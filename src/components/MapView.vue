@@ -24,7 +24,7 @@ const props = defineProps({
   drawShape: { type: String, required: true },       // "Point" | "LineString" | "Polygon"
   layersConfig: { type: Array, default: () => [] },
 });
-const emit = defineEmits(["features", "info", "request-layer-sync"]);
+const emit = defineEmits(["features", "info", "request-layer-sync", "suggest-mode"]);
 
 const mapEl = ref(null);
 let map, featureLayer, featureSource, tempLayer, tempSource;
@@ -118,7 +118,29 @@ function applyMode() {
   if (isDraw) {
     drawInteraction = new Draw({ source: featureSource, type: props.drawShape });
     map.addInteraction(drawInteraction);
-    drawInteraction.on("drawend", () => nextTick(refreshStateFromSource));
+    drawInteraction.on("drawend", (e) => {
+      // Keep source state in sync
+      nextTick(() => refreshStateFromSource());
+    
+      // Auto-select the feature that was just drawn
+      const f = e.feature;
+      selectedFeature = f;
+      const sel = selectInteraction.getFeatures();
+      sel.clear();
+      sel.push(f);
+    
+      // Show toast for the new feature
+      const center = featureCenter(f);
+      const { lat, lon } = fmtLatLon(center);
+      const fObj = gj.writeFeatureObject(f, {
+        dataProjection: "EPSG:4326",
+        featureProjection: "EPSG:3857",
+      });
+      emit("info", { visible: true, lat, lon, feature: fObj });
+    
+      // Ask parent to switch to modify mode
+      emit("suggest-mode", { mode: "modify" });
+    });
   }
 }
 
